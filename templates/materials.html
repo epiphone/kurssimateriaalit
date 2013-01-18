@@ -1,0 +1,42 @@
+$def with (materials)
+$var title: Kurssimateriaalit 0.1 - Materiaalit
+
+<div id="index-container" class="container">
+  <div class="row">
+    <!-- MATERIALS -->
+    <div class="span12">
+      <div class="navbar">
+        <div class="navbar-inner">
+          <div class="container">
+            
+            <a class="brand" href="#">Materiaalit</a>
+            
+            <form class="navbar-search pull-right">
+              <input type="text" class="search-query" placeholder="Etsi materiaalia">
+            </form>  
+          
+      </div>
+    </div>
+  </div>
+      <table class="table">
+          <thead>
+              <tr>
+                  <th>Otsikko</th>
+                  <th>Kuvaus</th>
+                  <th>Pisteet</th>
+                  <th>Lisätty</th>
+              </tr>
+          </thead>
+          <tbody>    
+              $for m in materials:
+                  <tr>
+                      <td>$m.title</td>
+                      <td>$m.description</td>
+                      <td>$m.points</td>
+                      <td>$m.date_added</td>
+                  </tr>
+          </tbody>
+      </table>
+    </div>   
+
+</div>

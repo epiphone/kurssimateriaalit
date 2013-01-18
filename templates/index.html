@@ -1,0 +1,78 @@
+$def with (new_materials, top_materials)
+$var title: Kurssimateriaalit 0.1 - Index
+
+<div id="index-container" class="container">
+
+    <!-- Main hero unit for a primary marketing message or call to action -->
+    <div class="hero-unit">
+      <h1>Kurssimateriaalit 0.1<small>prototyyppi</small></h1>
+      <p>Jaa muistiinpanosi, tiivistelmät, mindmapit, mitkälie. Anna mennä.</p>
+    </div>
+
+    <div class="row">
+      
+      <!-- NEW MATERIALS -->
+      <div class="span6">
+        <div class="navbar">
+          <div class="navbar-inner">
+            <div class="container">
+              <a class="brand" href="#">Uusimmat materiaalit</a>
+            </div>
+          </div>
+        </div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Kurssi</th>
+                    <th>Otsikko</th>
+                    <th>Kuvaus</th>
+                    <th>Pisteet</th>
+                    <th>Lisätty</th>
+                </tr>
+            </thead>
+            <tbody>    
+                $for m in new_materials:
+                    <tr>
+                        <td>$m.code</td>
+                        <td>$m.title</td>
+                        <td>$m.description</td>
+                        <td>$m.points</td>
+                        <td>$m.date_added</td>
+                    </tr>
+            </tbody>
+        </table>
+      </div>
+      <!-- TOP MATERIALS -->
+      <div class="span6">
+        <div class="navbar">
+          <div class="navbar-inner">
+            <div class="container">
+              <a class="brand" href="#">Parhaat materiaalit</a>
+            </div>
+          </div>
+        </div>
+        <table class="table">
+           <thead>
+                <tr>
+                    <th>Kurssi</th>
+                    <th>Otsikko</th>
+                    <th>Kuvaus</th>
+                    <th>Pisteet</th>
+                    <th>Lisätty</th>
+                </tr>
+            </thead>
+            <tbody>    
+                $for m in top_materials:
+                    <tr>
+                        <td>$m.code</td>
+                        <td>$m.title</td>
+                        <td>$m.description</td>
+                        <td>$m.points</td>
+                        <td>$m.date_added</td>
+                    </tr>
+            </tbody>
+        </table>
+      </div>
+
+    </div> <!-- /row -->
+</div>

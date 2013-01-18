@@ -1,0 +1,78 @@
+$def with (error, username)
+$var title: Kurssimateriaalit 0.1 - Rekisteröityminen
+$var show_login_form: False
+
+<div class="container">
+  <div class="row">
+    
+    <!-- LOGIN FORM -->
+    <div class="span5 offset1">
+      <form class="form form-signin" action="/login" method="POST">
+        <legend><h2 class="form-signin-heading">Kirjaudu sisään</h2></legend>
+        $if error == "bad_login":
+          <span class="label label-important"></i>Virheellinen käyttäjänimi tai salasana</span>
+        <input type="text" name="username" class="input-block-level" placeholder="Käyttäjänimi" required>
+        <input type="password" name="password" class="input-block-level" placeholder="Salasana" required>
+        <button class="btn btn-large btn-primary" type="submit">Kirjaudu</button>
+      </form>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div class="span5">
+      <form class="form form-signin" action="/register" method="POST">
+        <legend><h2 class="form-signin-heading">Rekisteröidy</h2></legend>
+        $if error == "empty_fields":
+          <span class="label label-important">Lomake sisältää tyhjiä kenttiä</span>
+        <!-- Username -->
+        $if error == "username_taken":
+          <span class="label label-important">Käyttäjänimi on varattu</span>
+        $elif error == "bad_reg_username":
+          <span class="label label-important">Käyttäjänimi ei ole sallitussa muodossa</span>
+        <input type="text" name="username" class="input-block-level" placeholder="Käyttäjänimi" required pattern="[a-zåäöA-ZÅÄÖ0-9]{4,20}">
+        <span class="help-inline">- Sallitut merkit: ä-ö, Ä-Ö, 0-9<br>- Pituus 4-20 merkkiä</span>
+        <!-- Password -->
+        <div><br><br></div>
+        $if error == "bad_reg_password":
+          <span class="label label-important">Salasana ei ole salitussa muodossa</span>
+        $elif error == "bad_match":
+          <span class="label label-important">Salasana ei vastaa varmistusta</span>
+        <input type="password" id="password1" name="password1" class="input-block-level" placeholder="Salasana" required pattern="(?=.*\d)(?=.*[a-zåäö])(?=.*[A-ZÅÄÖ])[0-9a-zåäöA-ZÅÄÖ!@#%]{8,80}">
+        <!-- Password again -->
+        <input type="password" id="password2" name="password2" class="input-block-level" placeholder="Salasana uudestaan">
+        <span class="help-inline">- Väh. yksi numero (0-9) ja yksi iso kirjain (A-Ö)<br>- Pituus 8-80 merkkiä</span>
+        <div><br></div>
+        <!-- Submit -->
+        <button class="btn btn-large btn-primary" type="submit">Rekisteröidy</button>
+      </form>
+    </div>
+  </div> <!-- /row -->
+</div> <!-- /container -->
+
+<script>
+window.onload = function(){
+  // Focusing on form:
+  $if error == "bad_login":
+    $$("input").eq(0).val("$username").select();
+  $elif error in ["bad_match", "bad_reg_password"]:
+    $$("input").eq(2).val("$username");
+    $$("input").eq(3).focus();
+  $else:
+    $if error in ["username_taken", "bad_reg_username", "empty_fields"]:
+      $$("input").eq(2).val("$username");
+    $else:
+      $$("input").eq(2).val("Käyttäjänimi");
+    $$("input").eq(2).select();
+
+  // Password confirmation validation:
+  $$("#password2").keyup(function(){
+    if ($$(this).val() !== $$("#password1").val()){
+      console.log("adding class..");
+      $$(this).addClass("force-invalid");
+    }
+    else {
+      $$(this).removeClass("force-invalid");
+      console.log("removing class..");
+    }
+  });
+};
+</script>

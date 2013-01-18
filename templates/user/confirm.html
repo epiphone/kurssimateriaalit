@@ -1,0 +1,14 @@
+$def with (activated)
+$var title: Kurssimateriaalit 0.1 - Vahvista rekisteröityminen
+$var show_login_form: False
+
+<div class="container">
+  <form class="form-signin" action="/confirm/" method="POST">
+    $if activated:
+      <legend><h2 class="form-signin-heading">Käyttäjä <bold>$session.user</bold> aktivoitu!</h2></legend>
+    $else:
+      <legend><h2 class="form-signin-heading">Aktivoi käyttäjä <bold>$session.user</bold></h2></legend>
+      <button class="btn btn-large btn-primary" type="submit">Aktivoi</button>
+  </form>
+</div> <!-- /container -->
+

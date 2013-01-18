@@ -1,0 +1,46 @@
+$def with (id, code, title)
+$var title: Kurssimateriaalit 0.1 - Lisää uusi materiaali
+$var show_login_form: True
+
+<div class="container">
+  <div class="row">
+    <div class="span8 offset2">
+
+      <div class="page-header">
+        <ul class="nav nav-pills">
+            <li ><a href="/add">1. Valitse kurssi</a></li>
+            <li class="active"><a href="#">2. Lisää materiaali</a></li>
+            <li class="disabled"><a href="#">3. Valmis!</a></li>
+        </ul>
+      </div>
+
+      <form class="form" enctype="multipart/form-data" action="" method="POST">
+          <h2>Lisää materiaali:<br><small><span class="label">$code</span> $title</small></h2>
+          
+          <label>Materiaalin nimi (4-30 merkkiä)</label>
+          <input type="text" name="title" value="Materiaalin nimi" placeholder="Materiaalin nimi" required pattern="^.{1,30}$$">
+          
+          <label>Kuvaus</label>
+          <textarea rows="3" name="description" placeholder="Lyhyt kuvaus..."></textarea>
+          
+          <label>Tagit (Enintään 5, erottele välilyönneillä tai pilkuilla)</label>
+          <input type="text" name="tags" placeholder="tagi1, tagi2, ...">
+          
+          <label>Tiedoston maksimikoko <strong>5MB</strong>, sallitut tiedostomuodot jpeg,gif,png,html,txt,org,ppt,pdf</label>
+          <input type="file" name="myfile">
+
+          <br>
+          <br>
+          <button type="submit" class="btn btn-large btn-primary">Lisää</button>
+        
+      </form>
+
+   </div></div></div>   
+      
+      
+<script>
+// Focus on search form:
+window.onload = function(){
+    $$("input").select();
+}
+</script>

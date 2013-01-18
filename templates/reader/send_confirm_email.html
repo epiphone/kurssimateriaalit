@@ -1,0 +1,19 @@
+$def with (error, email_sent)
+$var title: Kurssimateriaalit 0.1 - Lähetä vahvistus
+$var show_login_form: False
+
+
+<div class="container">
+  $if email_sent:
+    <form class="form-signin">
+      <legend><h2 class="form-signin-heading">Aktivointilinkki lähetetty</h2></legend>
+      <p>Kiitos!</p>
+    </form>
+  $else:
+    <form class="form-signin" action="/confirm" method="POST">
+      <legend><h2 class="form-signin-heading">Lähetä aktivointisähköposti</h2></legend>
+      <p>Sähköpostia käytetään vain aktivoimiseen - sitä ei tallenneta</p>
+      <input type="email" name="email" class="input-block-level" placeholder="Sähköpostiosoite" required>
+      <button class="btn btn-large btn-primary" type="submit">Lähetä</button>
+    </form>
+</div> <!-- /container -->
