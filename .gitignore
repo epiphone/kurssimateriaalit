@@ -3,3 +3,4 @@ kurssit.*
 session/
 sqlite3/
 sessions/
+*.pyc
