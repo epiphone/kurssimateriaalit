@@ -17,10 +17,10 @@ $var show_login_form: True
       <form class="form" enctype="multipart/form-data" action="" method="POST">
           <h2>Lisää materiaali:<br><small><span class="label">$code</span> $title</small></h2>
           
-          <label>Materiaalin nimi (4-30 merkkiä)</label>
-          <input type="text" name="title" value="Materiaalin nimi" placeholder="Materiaalin nimi" required pattern="^.{1,30}$$">
+          <label>Materiaalin nimi (4-30 merkkiä) *</label>
+          <input type="text" name="title" value="Materiaalin nimi" placeholder="Materiaalin nimi" required pattern="^.{4,30}$$">
           
-          <label>Kuvaus</label>
+          <label>Kuvaus (Enintään 100 merkkiä)</label>
           <textarea rows="3" name="description" placeholder="Lyhyt kuvaus..."></textarea>
           
           <label>Tagit (Enintään 5, erottele välilyönneillä tai pilkuilla)</label>

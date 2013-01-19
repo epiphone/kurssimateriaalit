@@ -9,6 +9,8 @@ import uuid
 import socket
 import cgi
 import sys
+import zipfile
+import datetime
 
 ### INITIALIZATION ###
 
@@ -23,8 +25,16 @@ urls = (
   "/confirm", "SendConfirmation",
   "/confirm/(.*)", "Confirm",
   "/add", "Add",
-  "/add/(\d+)", "Upload"
-  )
+  "/add/(\d+)", "Upload",
+  "/download/(\d+)", "Download"
+)
+
+UPLOAD_DIR = ".\\uploads"
+# These files are allowed (contents of zipped files will be checked too):
+ALLOWED_FILETYPES = ["jpg", "jpeg", "png", "gif", "bmp", "zip", "pdf", "mpg",
+                     "doc", "docx", "xls", "csv", "txt", "rtf", "html", "htm",
+                     "xlsx", "ppt", "pptx", "odt", "mp3", "m4a", "ogg", "wav",
+                     "mp4", "m4v", "wmv", "avi"]
 
 # App sends emails using a Gmail account:
 web.config.smtp_server = "smtp.gmail.com"
@@ -41,14 +51,14 @@ except IOError:
 
 
 # Maximum upload file size:
-cgi.maxlen = 3 * 1024 * 1024
+cgi.maxlen = 10 * 1024 * 1024
 
 
 store = web.session.DiskStore("sessions")
 app = web.application(urls, globals())
 db = models.DatabaseHandler()
 
-# Every users will have a unique session object:
+# Every user will have a unique session object:
 if web.config.get('_session') is None:
     session = web.session.Session(app, store, initializer={"login": 0, "privilege": 0, "user": None, "id": None})
     web.config._session = session
@@ -58,11 +68,29 @@ else:
 
 ### PAGES ###
 
+class Download():
+    def GET(self, id):
+        """Serves a file."""
+        material = db.select("materials", id=int(id))[0]
+        path = create_path(id) + "." + material.type
+        # web.header("Content-Disposition", "attachment; filename=%s" % path.split("\\")[-1])
+        web.header("Content-Type", material.type)
+        web.header('Transfer-Encoding', 'chunked')
+        print "### Downloading ", path, material
+        f = open(path, 'rb')
+        while 1:
+            buf = f.read(1024 * 2)
+            if not buf:
+                f.close()
+                break
+            yield buf
+
+
 class Upload:
     def GET(self, id):
         """Renders a form for adding a new material."""
         try:
-            course = db.select("courses", id)[0]
+            course = db.select("courses", id=id)[0]
         except:
             return "404"  # TODO
 
@@ -70,50 +98,72 @@ class Upload:
         return render.upload(id, course.code, course.title)
 
     def POST(self, id):
-        """Adds a new material."""
+        """Validates material submission form, adds a new material entry and
+        uploads the corresponding file."""
+        course_id = int(id)
         title = web.input().title.strip().capitalize()
+        tags = " ".join([tag[:30] for tag in web.input().tags.split(",")[:5]])
         description = web.input().description.strip().capitalize()
-        tags = web.input().tags.strip()
+        if len(description) > 100:
+            description = description[:100] + "..."
 
-        print title
-        print description
-        print tags
+        if re.match(r"^.{4,30}$", title) == None:  # TODO parempi regex?
+            raise web.seeother("/add/%d?error=bad_title&description=%s&tags=%s"
+                               % (course_id, description, tags))
 
-        id = int(id)
+        # Add course code and title to tags, to speed up search:
+        course = db.select("courses", id=course_id)[0]
+        tags = "%s %s " % (course.code, course.title) + tags
 
-        # Add material info to database:
-        material_id = db.add_material(title, description, tags, id, session.id)  # TODO exception
-        material_id_str = str(material_id)
+        # Insert material to database:
+        material_id = db.insert("materials", title=title, description=description,
+            tags=tags, course_id=course_id, user_id=session.id)
 
-        # Upload file:
-        path = (6 - len(material_id_str)) * "0" + material_id_str
-        folder = path[:3]
-        path = folder + "/" + path[3:]
-        if not os.path.exists("./static/uploads/" + folder):
-            os.makedirs("./static/uploads/" + folder)
+        # Create a path from id, eg. 11 becomes ".\\uploads\\000\\011"
+        path = create_path(material_id)
+        folder = path.split("\\")[0]
+        if not os.path.exists(UPLOAD_DIR + "\\" + folder):
+            os.makedirs(UPLOAD_DIR + "\\" + folder)
+
+        get_params = "&title=%s&description=%s&tags=%s" % (title, description, tags)
+        redirect_url = "/add/" + str(course_id) + "?error=%s" + get_params
 
         try:
-            f = web.input(myfile={})
-            if "myfile" in f:
-                file_to_upload = f["myfile"]
+            x = web.input(myfile={})
+            if "myfile" in x:
+                file_to_upload = x["myfile"]
                 filepath = file_to_upload.filename.replace("\\", "/")
                 filename = filepath.split("/")[-1]
                 filetype = filename.split(".")[-1]
-                if not filetype in ["jpeg", "jpg", "pdf"]:
+                path += "." + filetype
+
+                # Check for illegal file types:
+                if not filetype in ALLOWED_FILETYPES or filetype == filename:
                     db.delete("materials", material_id)
-                    raise web.seeother("/add/%d?error=bad_filetype" % id)
-                fout = open("static/uploads/" + path + "." + filetype, "wb")
+                    raise web.seeother(redirect_url % "bad_filetype")
+
+                # Upload file:
+                fout = open(path, "wb")
                 fout.write(file_to_upload.file.read())
                 fout.close()
-                size = os.path.getsize("./static/uploads/" + path + "." + filetype)
+
+                # If file is zipped, check contents:
+                if filetype == "zip" and not is_valid_zip(path):
+                    db.delete("materials", material_id)
+                    delete_file(path)
+                    raise web.seeother(redirect_url % "bad_zip")
+
                 # Update file size and type to database:
-                db.material_update_file(material_id, filetype, size)
+                size = os.path.getsize(path) / 1024
+                db.update("materials", material_id, type=filetype, size=size)
+            else:
+                db.delete("materials", material_id)
+                return "upload epäonnistui; ei löydetty tiedostoa?"  # TODO
             raise web.seeother("/")
-        except ValueError:
+        except ValueError:  # File is too large.
             db.delete("materials", material_id)
-            raise web.seeother("/add/%d?error=too_large_file" % id)
-        except Exception, e:
-            return e
+            delete_file(path)
+            raise web.seeother(redirect_url % "too_large_file")
 
 
 class Add:
@@ -161,7 +211,7 @@ class Add:
             raise web.seeother("/add?error=bad_faculty")
 
         # Information is valid, add course to database:
-        id = db.add_course(code, title, faculty)
+        id = db.insert("courses", code=code, title=title, faculty=faculty)
         # Redirect to material submission page:
         raise web.seeother("/add/" + str(id))
 
@@ -171,7 +221,7 @@ class Confirm:
         """Renders a page with a button for account verification
         and another for account deletion."""
         try:
-            user = db.get_user(conf_code=conf_code)[0]
+            user = db.select("users", conf_code=conf_code)[0]
         except IndexError:
             return "404"  # TODO
 
@@ -186,9 +236,8 @@ class Confirm:
         return render.confirm(activated)
 
     def POST(self, conf_code):
-        print "trying to activate, id:", session.id
         try:
-            db.user_activate(session.id)
+            db.update("users", session.id, privilege=1)
         except Exception, e:
             return e  # TODO!!
         path = web.ctx.env.get("HTTP_REFERER", "/")
@@ -200,7 +249,7 @@ class Confirm:
 class SendConfirmation:
     def GET(self):
         """Renders a form for user's email."""
-        user = db.select("users", session.id).list()
+        user = db.select("users", id=session.id).list()
         if not user:
             return "404"  # TODO
         error = web.input(error=None).error
@@ -211,7 +260,7 @@ class SendConfirmation:
     def POST(self):
         """Sends confirmation email to given address."""
         email = web.input(email="").email
-        user = db.select("users", session.id).list()
+        user = db.select("users", id=session.id).list()
         if not user:
             return "Käyttäjää ei löytynyt"  # TODO
 
@@ -222,10 +271,10 @@ class SendConfirmation:
         conf_code = user[0].conf_code
         conf_url = "http://%s:8080/confirm/%s" % (socket.gethostbyname(socket.gethostname()), str(conf_code))  # TODO
         subject = "Kurssimateriaalit - Aktivoi käyttäjätilisi"
-        message = """Aktivoi käyttäjätilisi osoitteessa %s
+        message = """Aktivoi käyttäjätilisi '%s' osoitteessa %s
 
                   Spämmiä? Ei hätää; käyttäjätilin poistaminen onnistuu saman
-                  osoitteen kautta""" % conf_url
+                  osoitteen kautta""" % (user.name, conf_url)
 
         try:
             web.sendmail(web.config.smtp_username, email, subject, message)
@@ -256,7 +305,7 @@ class Register:
             ((lambda n, p1, p2: p1 != p2), "bad_match"),
             ((lambda n, p1, p2: re.match(username_re, n) == None), "bad_reg_username"),
             ((lambda n, p1, p2: re.match(password_re, p1) == None), "bad_reg_password"),
-            ((lambda n, p1, p2: db.get_user(n).list()), "username_taken")
+            ((lambda n, p1, p2: db.select("users", name=n).list()), "username_taken")
         ]
 
         for (f, msg) in validators:
@@ -267,7 +316,8 @@ class Register:
         salt = uuid.uuid4().hex
         hash = hashlib.sha256(passwd1 + salt).hexdigest()
         conf_code = hashlib.md5(uuid.uuid4().hex + name).hexdigest()
-        id = db.add_user(name, hash, salt, conf_code, 0)
+        id = db.insert("users", name=name, hash=hash, salt=salt,
+            conf_code=conf_code, privilege=0)
 
         # Log in:
         session.login = 1
@@ -284,7 +334,7 @@ class Login:
         name, passwd = i["username"], i["password"]
 
         try:
-            ident = db.get_user(name)[0]
+            ident = db.select("users", name=name)[0]
         except IndexError:  # Username not found.
             return web.seeother("/register?error=bad_login&username=%s" % name)
 
@@ -295,7 +345,10 @@ class Login:
                 session.privilege = ident.privilege
                 session.user = ident.name
                 session.id = ident.id
-                db.user_set_last_login(ident.id)
+                # Update user's last login date:
+                date = str(datetime.date.today())
+                db.update("users", ident.id, last_login=date)
+
                 raise web.seeother("/")
             # Wrong password:
             else:
@@ -309,7 +362,7 @@ class Login:
 class Course:
     def GET(self, id):
         id = int(id)
-        course = db.select("courses", id).list()
+        course = db.select("courses", id=id).list()
         if course:
             course = course[0]
         else:
@@ -323,11 +376,7 @@ class Course:
 
 class Courses:
     def GET(self):
-        courses_iterator = db.select("courses", limit=10)
-        courses = []
-        for c in courses_iterator:
-            c["materials"] = db.get_materials_num(c.id)
-            courses.append(c)
+        courses = db.get_courses()
 
         render = create_render(session.privilege)
         return render.courses(courses)
@@ -368,15 +417,46 @@ def logged():
     return False
 
 
-def path(material):
-    id_str = str(material.id)
-    id_str = (6 - len(id_str)) * "0" + id_str
-    path = id_str[:3] + "/" + id_str[3:]
-    return "/static/uploads/" + path + "." + material.type
+def create_path(id):
+    """Returns a file path based on given material id.
+
+    >>> create_path(13) == UPLOAD_DIR + "\\000\\013"
+    True
+    """
+    id = str(id)
+    path = (6 - len(id)) * "0" + id
+    folder = path[:3]
+    return UPLOAD_DIR + "\\" + folder + "\\" + path[3:]
+
+
+def is_valid_zip(path):
+    """Returns False if a zip file contains any disallowed filetypes."""
+    for content in zipfile.ZipFile(path).namelist():
+        content_type = content.split(".")[-1]
+        if content_type == content or not content_type in ALLOWED_FILETYPES:
+            return False
+    return True
+
+
+def delete_file(path):
+    """Deletes a file at given path, returns True if deleted successfully.
+
+    >>> delete_file(UPLOAD_DIR + "\\..\\something_important")
+    False
+    >>> delete_file("C:\\System32")
+    False"""
+    if re.match(r"^(\\{2}\d{3}){2}\.\w{1,4}$", path, re.IGNORECASE) != None:
+        return False
+    try:
+        os.remove(path)
+    except:
+        return False
+    print "Deleting file", path
+    return True
 
 
 def create_render(privilege):
-    my_globals = {"session": session, "path": path}
+    my_globals = {"session": session}
     if logged():
         if privilege == 0:
             render = web.template.render('templates/reader', base='base', globals=my_globals)
@@ -390,13 +470,19 @@ def create_render(privilege):
 
 
 def format_date(date):
-    """Formats a date string from 'YYYY-MM-DD' to 'DD.MM.YYYY'
+    """Formats a date string from 'YYYY-MM-DD' to 'D.M.YYYY'
 
-    >>> db.format_date("2013-01-01")
-    "01.01.2013"
+    >>> format_date("2013-01-01") == "1.1.2013"
+    True
     """
     parts = date.split("-")
-    return "%s.%s.%s" % (parts[2], parts[1], parts[0])
+    return "%d.%d.%s" % (int(parts[2]), int(parts[1]), parts[0])
+
+
+def doctest():
+    """Run doctests"""
+    import doctest
+    doctest.testmod()
 
 if __name__ == "__main__":
     app.run()

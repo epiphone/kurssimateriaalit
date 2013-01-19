@@ -1,78 +1,106 @@
 # -*- coding:utf-8 -*-
-# Everything database-related
-# Aleksi Pekkala 13.1.2013
+# Database initialization and helper functions.
+# Aleksi Pekkala 18.1.2013
 
 import web
 import sqlite3
-import datetime
 
 
 class DatabaseHandler:
     """A database wrapper class."""
-    def select(self, table, id=None, order_by="id", limit=100):
-        if id:
-            return self.db.select(table, locals(), where="id=$id", order=order_by, limit=limit)
-        return self.db.select(table, order=order_by, limit=limit)
+
+    ### GENERAL ###
+
+    def select(self, tables, values="*", order_by=None, limit=None, **kws):
+        """Selects rows from given table, kws determines WHERE-clauses.
+
+        >>> db=DatabaseHandler();id1=db.insert("users",name="u1",points=1)
+        >>> id2 = db.insert("users", name="u1", points=2)
+        >>> db.select("users", name="u1", points=1)[0].id == id1
+        True
+        >>> db.delete("users", id=id1); db.delete("users", id=id2)
+        """
+        if type(tables) == list:
+            tables = ",".join(tables)
+        clauses = [] if kws else ""
+        for key in kws:
+            clauses.append("%s=$%s" % (key, key))
+        if kws:
+            clauses = " WHERE " + " AND ".join(clauses)
+        if order_by:
+            clauses += " ORDER BY %s" % order_by
+        if limit:
+            clauses += " LIMIT $limit"
+        query = "SELECT " + values + " FROM " + tables + clauses
+        kws["limit"] = limit
+        return self.db.query(query, kws)
 
     def delete(self, table, id):
+        """Deletes a row with given id from given table."""
         self.db.delete(table, vars=locals(), where="id=$id")
+
+    def update(self, table, id, **kws):
+        """Updates a row from selected table, kws determines which values are
+        updated.
+
+        >>> db = DatabaseHandler(); id=db.insert("users")
+        >>> db.update("users", id, name="test", points=10);
+        >>> user = db.select("users", id=id)[0]
+        >>> user.name == "test" and user.points == 10
+        True
+        >>> db.delete("users", id)
+        """
+        values = []
+        for key in kws:
+            values.append("%s=$%s" % (key, key))
+        query = "UPDATE %s SET %s WHERE id=$id" % (table, ",".join(values))
+        kws["id"] = id
+        self.db.query(query, kws)
 
     ### USERS ###
 
-    def get_user(self, name=None, conf_code=None):
-        if name:
-            return self.db.select("users", locals(), where="name=$name")
-        return self.db.select("users", locals(), where="conf_code=$conf_code")
-
-    def add_user(self, name, hash, salt, conf_code, privilege):
-        return self.db.insert("users", name=name, hash=hash, salt=salt,
-            conf_code=conf_code, privilege=privilege)
-
-    def user_activate(self, id):
-        self.db.update("users", where="id=" + str(id), privilege=1)
-
-    def user_update_hash(self, id, hash, salt):
-        self.db.update("users", where="id=" + str(id), hash=hash, salt=salt)
-
     def user_increase_points(self, id):
-        try:
-            pts = self.select("users", id)[0].points + 1
-        except:
-            return False
-        self.db.update("users", where="id=" + str(id), points=pts)
-        return True
-
-    def user_set_last_login(self, id):
-        date = str(datetime.date.today())
-        self.db.update("users", where="id=" + str(id), last_login=date)
+        """Increases user's points by one."""
+        pts = self.select("users", id)[0].points + 1
+        self.db.update("users", id, points=pts)
 
     ### COURSES ###
 
-    def add_course(self, code, title, faculty):
-        return self.db.insert("courses", code=code, title=title, faculty=faculty)
+    def get_courses(self, id=None, order_by=None, limit=None):
+        """Selects courses and the number of materials they have."""
+        query = """SELECT courses.id, courses.code, courses.title,
+                courses.faculty, count(materials.id) AS materials
+                FROM courses, materials WHERE courses.id=materials.course_id
+                """
+
+        if id:
+            query += " AND courses.id=$id"
+        if order_by:
+            query += " ORDER BY %s" % order_by
+        if limit:
+            query += " LIMIT $limit"
+
+        return self.db.query(query, locals())
 
     def search_courses(self, query_word, code_only=False):
+        """Selects courses whose code or title match the given query."""
         query_word = "%" + query_word + "%"
         query = "SELECT * from courses WHERE code LIKE $query_word"
         if not code_only:
             query += " OR title LIKE $query_word"
-        return self.db.query(query, vars={"query_word": query_word})
+        return self.db.query(query, {"query_word": query_word})
 
     ### MATERIALS ###
 
-    def add_material(self, title, description, tags, course_id, user_id):
-        return self.db.insert("materials", title=title, description=description,
-            course_id=course_id, user_id=user_id)
-
-    def get_materials(self, course_id=None, user_id=None, order_by=None, limit=10):
+    def get_materials(self, course_id=None, user_id=None, order_by=None, limit=None):
         """Returns either all selected materials or only a selected course's materials.
         Includes information about the course and the user who own's the material.
 
-        >>> db = DatabaseHandler(); uid = db.add_user("doctest","","",0)
-        >>> cid = db.add_course("","",""); mid = db.add_material("","","",cid,uid)
-        >>> db.get_materials(course_id=cid)[0].code == db.select("courses",cid)[0].code
+        >>> db = DatabaseHandler();uid = db.insert("users");cid = db.insert("courses");
+        >>> mid = db.insert("materials", course_id=cid, user_id=uid)
+        >>> db.get_materials(course_id=cid)[0].code == db.select("courses",id=cid)[0].code
         True
-        >>> db.get_materials(user_id=uid)[0].name == db.select("users",uid)[0].name
+        >>> db.get_materials(user_id=uid)[0].name == db.select("users",id=uid)[0].name
         True
         >>> db.delete("materials",mid); db.delete("courses",cid); db.delete("users",uid)
         """
@@ -83,62 +111,46 @@ class DatabaseHandler:
                 courses.title AS course_title, courses.faculty, users.name,
                 users.points AS user_points FROM materials,courses,users
                  WHERE materials.user_id = users.id AND materials.course_id =
-                 courses.id%s"""
+                 courses.id"""
 
-        params = ""
         if course_id:
-            params += " AND courses.id=%d" % course_id
+            query += " AND courses.id=$course_id"
         if user_id:
-            params += " AND users.id=%d" % user_id
+            query += " AND users.id=$user_id"
         if order_by:
-            params += " ORDER BY %s" % order_by
-        params += " LIMIT %d" % limit
+            query += " ORDER BY %s" % order_by
+        if limit:
+            query += " LIMIT $limit"
 
-        return self.db.query(query % params)
+        return self.db.query(query, locals())
 
-    def get_materials_num(self, course_id):
+    def get_materials_count(self, course_id):
         """Returns the number of materials a course has."""
-        return len(self.db.select("materials", locals(), where="course_id=$course_id").list())
-
-    def material_update_file(self, id, file_type, size):
-        self.db.update("materials", where="id=" + str(id), type=file_type, size=size)
-
-    def update_material(self, id, title, description, tags):
-        self.db.update("materials", where="id=" + str(id), title=title,
-            description=description, tags=tags)
+        query = "SELECT count() FROM materials WHERE course_id=$course_id"
+        return self.db.query(query, locals())[0]["count()"]
 
     def material_increase_points(self, id):
         """Increases the points of a material by one.
 
         >>> db = DatabaseHandler()
-        >>> id = db.add_material("","","",1,1)
-        >>> db.select("materials", id)[0].points
+        >>> id = db.db.insert("materials",title="",description="",tags="",course_id=1,user_id=1)
+        >>> db.select("materials", id=id)[0].points
         0
         >>> db.material_increase_points(id)
-        True
-        >>> db.select("materials", id)[0].points
+        >>> db.select("materials", id=id)[0].points
         1
-        >>> db.delete("materials", id)
+        >>> db.delete("materials", id=id)
         """
-        try:
-            pts = self.select("materials", id)[0].points
-        except:
-            return False
+        pts = self.select("materials", id=id)[0].points
         pts += 1
-        self.db.update("materials", where="id=" + str(id), points=pts)
-        return True
+        self.db.update("materials", vars=locals(), where="id=$id", points=pts)
 
     ### COMMENTS ###
 
-    def add_comment(self, content, user_id, material_id):
-        comments = self.select("materials", material_id)[0].comments
-        comments += 1
-        self.db.update("materials", where="id=" + str(material_id), comments=comments)
-        return self.db.insert("comments", content=content, user_id=user_id,
-            material_id=material_id)
-
     def get_comments(self, material_id):
         return self.db.select("comments", locals(), where="material_id=$material_id", order="date_added")
+
+    ### INIT ###
 
     def __init__(self):
         """Initializes database tables if they don't already exist."""
@@ -193,35 +205,12 @@ class DatabaseHandler:
             sys.exit()
 
         self.db = web.database(dbn="sqlite", db="kurssit.db")
+        self.insert = self.db.insert
         self.db.ctx.db.text_factory = str
 
-    ### UTILITIES ###
 
-    def create_data(self):
-        self.add_course("ITKA100", "Ohjelmointi 1",  "IT")
-        self.add_course("ITKA123", "Algoritmit", "IT")
-        self.add_course("FIL666", "Johdatus käsienheilutteluun",  "Humanistinen")
-        self.add_course("KTTP100", "Kansantaloustieteen peruskurssi", "Kauppakorkeakoulu")
-        self.add_course("SPOR123", "Jotain urheilua",  "Liikuntatieteellinen")
-        self.add_course("PSY001", "Jedi mind tricks",  "Yhteiskuntatieteellinen")
-        self.add_course("XXXXYYY", "Testi1",  "Matemaattis-luonnontieteell.")
-        self.add_course("ITKA999", "Johdatus ohjelmistotekniikkaan", "IT")
-        self.add_course("ITKP001", "Ohjelmointi 3", "IT")
-
-        self.add_material("Irmelin muistiinpanot", "Ihan sika hyvät", "Irmeli ITKA100 Ohjemointi 1", 1, 1)
-        self.add_material("Kallen ohjelmointidiat", "Niitä on yks kaks ja kolme", "Kallen diat algoritmit", 1, 1)
-        self.add_material("Irmelin hum. muistiinpanot", "Ihan sika hyvät", "Irmeli ITKA100 Ohjemointi 1", 2, 1)
-        self.add_material("Irmelin kttp muistiinpanot4", "Ihan sika hyvät", "Irmeli ITKA100 Ohjemointi 1", 3, 1)
-        self.add_material("Irmelin sport muistiinpanot5", "Ihan sika hyvät", "Irmeli ITKA100 Ohjemointi 1", 4, 1)
-        self.add_material("Irmelin psy muistiinpanot6", "Ihan sika hyvät", "Irmeli ITKA100 Ohjemointi 1", 5, 1)
-        self.add_material("Irmelin jot muistiinpanot7", "Ihan sika hyvät", "Irmeli ITKA100 Ohjemointi 1", 6, 1)
-        self.add_material("Irmelin ohj3 muistiinpanot8", "Ihan sika hyvät", "Irmeli ITKA100 Ohjemointi 1", 7, 1)
-
-    def clear_data(self):
-        for table in ["courses", "materials"]:
-            for item in self.select(table):
-                self.delete(table, item.id)
-
+if __name__=="__main__":
+    db = DatabaseHandler()
 
 def doctest():
     import doctest

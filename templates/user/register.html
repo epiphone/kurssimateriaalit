@@ -33,7 +33,7 @@ $var show_login_form: False
         <!-- Password -->
         <div><br><br></div>
         $if error == "bad_reg_password":
-          <span class="label label-important">Salasana ei ole salitussa muodossa</span>
+          <span class="label label-important">Salasana ei ole sallitussa muodossa</span>
         $elif error == "bad_match":
           <span class="label label-important">Salasana ei vastaa varmistusta</span>
         <input type="password" id="password1" name="password1" class="input-block-level" placeholder="Salasana" required pattern="(?=.*\d)(?=.*[a-zåäö])(?=.*[A-ZÅÄÖ])[0-9a-zåäöA-ZÅÄÖ!@#%]{8,80}">
