@@ -1,6 +1,6 @@
-gmailpassword.txt
 kurssit.*
 sqlite3/
 sessions/
 uploads/
 *.pyc
+*.txt

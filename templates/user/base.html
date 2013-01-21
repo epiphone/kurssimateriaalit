@@ -8,9 +8,10 @@ $def with (content)
     <link rel="stylesheet" type="text/css" href="/static/css/bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="/static/css/style.css">
     <link rel="stylesheet" type="text/css" href="/static/css/bootstrap-responsive.min.css">
-
 </head>
 <body>
+  
+      
      <div class="navbar navbar-inverse navbar-fixed-top">
       <div class="navbar-inner">
         <div class="container">
@@ -27,7 +28,7 @@ $def with (content)
                 <li class="active"><a href="/materials">Materiaalit</a></li>
             $else:
                 <li><a href="/courses">Kurssit</a></li>
-                <li><a href="/materials">Materiaalit</a></li>
+                <li><a href="/materials">Materiaalit</a></li>  
           </ul>
 
           $if session.login:
@@ -53,15 +54,17 @@ $def with (content)
               </form>
               <p class="navbar-text pull-right"><a href="/register">Rekisteröidy</a></p>
                 
-            
-        </div>
-      </div>
-    </div>
+        </div> <!--/.container-->
+      </div> <!--/.navbar-inner-->
+    </div> <!--/.navbar-->
+
 
     $:content
     
+
     <!-- Supposedly makes pages load faster..? -->
-    <script src="static/js/jquery.js"></script>
-    <script src="static/js/bootstrap.min.js"></script>
+    <script src="/static/js/jquery.js"></script>
+    <script src="/static/js/bootstrap.min.js"></script>
+</script>
 </body>
 </html>

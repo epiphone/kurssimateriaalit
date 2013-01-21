@@ -9,8 +9,8 @@ $var show_login_form: True
       <div class="page-header">
         <ul class="nav nav-pills">
             <li class="active"><a href="/add">1. Valitse kurssi</a></li>
-            <li class="disabled"><a href="#">2. Lisää materiaali</a></li>
-            <li class="disabled"><a href="#">3. Valmis!</a></li>
+            <li class="disabled"><a>2. Lisää materiaali</a></li>
+            <li class="disabled"><a>3. Valmis!</a></li>
         </ul>
       </div>
 
@@ -58,7 +58,7 @@ $var show_login_form: True
               Virhe! Antamaasi kurssikoodia vastaava kurssi on jo lisätty
             </strong>
             </div>
-          <input type="text" name="code" class="input-medium" placeholder="Kurssikoodi" required pattern="^\w{4}\d{3}$$">
+          <input type="text" name="code" class="input-medium" placeholder="Kurssikoodi" required pattern="^[a-zA-Z0-9]{5}\d{2}$$">
           <input type="text" name="title" class="input-large" placeholder="Kurssin nimi" required pattern="^.{1,50}$$">
           <select class="input-medium" name="faculty">
             <option value=""><small>--Organisaatio--</small></option>

@@ -129,21 +129,26 @@ class DatabaseHandler:
         query = "SELECT count() FROM materials WHERE course_id=$course_id"
         return self.db.query(query, locals())[0]["count()"]
 
-    def material_increase_points(self, id):
-        """Increases the points of a material by one.
+    def like_material(self, material_id, user_id):
+        """Increases the points of a material by one, adds material's id to
+        user's "points_given" column, so that it won't get liked twice by
+        the same user.
 
-        >>> db = DatabaseHandler()
-        >>> id = db.db.insert("materials",title="",description="",tags="",course_id=1,user_id=1)
-        >>> db.select("materials", id=id)[0].points
-        0
-        >>> db.material_increase_points(id)
-        >>> db.select("materials", id=id)[0].points
+        >>> db = DatabaseHandler(); uid = db.insert("users");
+        >>> mid = db.insert("materials")
+        >>> db.like_material(mid, uid)
+        >>> db.select("materials", id=mid)[0].points
         1
-        >>> db.delete("materials", id=id)
+        >>> db.select("users", id=uid)[0].points_given.split(" ")[0] == str(mid)
+        True
+        >>> db.delete("materials", id=mid); db.delete("users", id=uid)
         """
-        pts = self.select("materials", id=id)[0].points
+        pts = self.select("materials", id=material_id)[0].points
         pts += 1
-        self.db.update("materials", vars=locals(), where="id=$id", points=pts)
+        self.update("materials", material_id, points=pts)
+        pts_given = self.select("users", id=user_id)[0].points_given
+        pts_given = pts_given + " " + str(material_id) if pts_given else str(material_id)
+        self.update("users", user_id, points_given=pts_given)
 
     ### COMMENTS ###
 
@@ -208,9 +213,9 @@ class DatabaseHandler:
         self.insert = self.db.insert
         self.db.ctx.db.text_factory = str
 
-
-if __name__=="__main__":
+if __name__ == "__main__":
     db = DatabaseHandler()
+
 
 def doctest():
     import doctest

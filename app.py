@@ -11,6 +11,7 @@ import cgi
 import sys
 import zipfile
 import datetime
+import urllib2
 
 ### INITIALIZATION ###
 
@@ -26,7 +27,8 @@ urls = (
   "/confirm/(.*)", "Confirm",
   "/add", "Add",
   "/add/(\d+)", "Upload",
-  "/download/(\d+)", "Download"
+  "/download/(\d+)", "Download",
+  "/like", "Like"
 )
 
 UPLOAD_DIR = ".\\uploads"
@@ -93,9 +95,17 @@ class Upload:
             course = db.select("courses", id=id)[0]
         except:
             return "404"  # TODO
+        error = web.input(error="").error
+        title = web.input(title="Materiaalin nimi").title
+        description = web.input(description="").description
+        tags = web.input(tags="").tags
+
+        for param in [title, description, tags]:
+            param = urldecode(param)
 
         render = create_render(session.privilege)
-        return render.upload(id, course.code, course.title)
+        return render.upload(id=id, code=course.code, course_title=course.title,
+            error=error, material_title=title, description=description, tags=tags)
 
     def POST(self, id):
         """Validates material submission form, adds a new material entry and
@@ -107,15 +117,14 @@ class Upload:
         if len(description) > 100:
             description = description[:100] + "..."
 
+        # Create the URL that the user is redirected to if the form is invalid:
+        redirect_url = lambda error: ("/add/%d?error=%s&title=%s&description=%s&tags=%s"
+            % (course_id, error, urlencode(title), urlencode(description), urlencode(tags)))
+
         if re.match(r"^.{4,30}$", title) == None:  # TODO parempi regex?
-            raise web.seeother("/add/%d?error=bad_title&description=%s&tags=%s"
-                               % (course_id, description, tags))
+            raise web.seeother(redirect_url("bad_title"))
 
-        # Add course code and title to tags, to speed up search:
-        course = db.select("courses", id=course_id)[0]
-        tags = "%s %s " % (course.code, course.title) + tags
-
-        # Insert material to database:
+        # Insert material to database, use row id to generate file path:
         material_id = db.insert("materials", title=title, description=description,
             tags=tags, course_id=course_id, user_id=session.id)
 
@@ -124,9 +133,6 @@ class Upload:
         folder = path.split("\\")[0]
         if not os.path.exists(UPLOAD_DIR + "\\" + folder):
             os.makedirs(UPLOAD_DIR + "\\" + folder)
-
-        get_params = "&title=%s&description=%s&tags=%s" % (title, description, tags)
-        redirect_url = "/add/" + str(course_id) + "?error=%s" + get_params
 
         try:
             x = web.input(myfile={})
@@ -140,7 +146,7 @@ class Upload:
                 # Check for illegal file types:
                 if not filetype in ALLOWED_FILETYPES or filetype == filename:
                     db.delete("materials", material_id)
-                    raise web.seeother(redirect_url % "bad_filetype")
+                    raise web.seeother(redirect_url("bad_filetype"))
 
                 # Upload file:
                 fout = open(path, "wb")
@@ -151,7 +157,7 @@ class Upload:
                 if filetype == "zip" and not is_valid_zip(path):
                     db.delete("materials", material_id)
                     delete_file(path)
-                    raise web.seeother(redirect_url % "bad_zip")
+                    raise web.seeother(redirect_url("bad_zip"))
 
                 # Update file size and type to database:
                 size = os.path.getsize(path) / 1024
@@ -163,7 +169,25 @@ class Upload:
         except ValueError:  # File is too large.
             db.delete("materials", material_id)
             delete_file(path)
-            raise web.seeother(redirect_url % "too_large_file")
+            raise web.seeother(redirect_url("bad_filesize"))
+
+
+class Like:
+    def GET(self):
+        id = web.input(id="").id
+        if not id or session.privilege < 1:
+            raise web.seeother(web.ctx.env.get("HTTP_REFERER", "/"))
+
+        user = db.select("users", id=session.id)[0]
+        material = db.select("materials", id=int(id))[0]
+        points_given = db.select("users", id=session.id)[0].points_given
+
+        # Don't like if user has already liked this material or owns the material:
+        if points_given and id in points_given.split(" ") or material.user_id == user.id:
+            raise web.seeother("/?error=points_given")
+
+        db.like_material(material_id=int(id), user_id=session.id)
+        raise web.seeother(web.ctx.env.get("HTTP_REFERER", "/"))
 
 
 class Add:
@@ -201,7 +225,7 @@ class Add:
             raise web.seeother("/add?query=%s&error=course_exists" % code)
 
         # Finally check that submitted forms are valid:
-        if re.match(r"^[A-Z0-9]{4}\d{3}$", code) == None:
+        if re.match(r"^[A-Z0-9]{5}\d{2}$", code) == None:
             raise web.seeother("add?error=bad_code")
         title = re.sub(" +", " ", title)  # Remove multiple spaces from title.
         if re.match(r"^.{1,50}$", title) == None:  # TODO parempi regex?
@@ -420,7 +444,7 @@ def logged():
 def create_path(id):
     """Returns a file path based on given material id.
 
-    >>> create_path(13) == UPLOAD_DIR + "\\000\\013"
+    >>> create_path(13) == r".\\uploads\\000\\013"
     True
     """
     id = str(id)
@@ -455,8 +479,16 @@ def delete_file(path):
     return True
 
 
+def urlencode(url):
+    return urllib2.quote(url.encode("utf-8")) if url else ""
+
+
+def urldecode(url):
+    return urllib2.unquote(url) if url else ""
+
+
 def create_render(privilege):
-    my_globals = {"session": session}
+    my_globals = {"session": session, "format_date": format_date}
     if logged():
         if privilege == 0:
             render = web.template.render('templates/reader', base='base', globals=my_globals)
@@ -480,7 +512,7 @@ def format_date(date):
 
 
 def doctest():
-    """Run doctests"""
+    """Run doctests."""
     import doctest
     doctest.testmod()
 

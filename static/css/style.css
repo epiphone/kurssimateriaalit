@@ -1,7 +1,10 @@
 body {
     padding-top: 60px;
     padding-bottom: 40px;
+    background: url(/static/img/cream.png) repeat 0 0;
 }
+
+/* ### NAVBAR ### */
 
 .navbar-form input,
 .form-inline input,
@@ -27,10 +30,18 @@ body {
     color: #fff;
 }
 
-.linkable tbody tr:hover {
-    background-color:yellow;
-    cursor:pointer;
+/* ### INDEX HEADER ### */
+
+.hero-unit {
+    padding-bottom: 15px;
 }
+
+.hero-unit .btn {
+    margin-top: 10px;
+    margin-right: 10px;
+}
+
+/* ### REGISTER & LOGIN FORMS */
 
 .form-signin {
     max-width: 300px;
@@ -62,40 +73,44 @@ body {
     margin-top: -10px;
 }
 
+/* ### INDEX LISTS ### */
+
 .material-listitem {
-    /*line-height: 16px;*/
-    min-height: 32px;
-    /*overflow: auto;*/
+    min-height: 48px;
+    padding: 2px;
     padding-bottom: 4px;
     margin-bottom:4px;
     background-color:#e1e8d9;
-    /*background-color: #b5c9c6;*/
-    border-radius: 4px 4px 4px 4px;
+    border-radius: 4px 4px 4px 4px;   
 }
 
-.material-listitem.odd{
-    /*background-color:#e1e8d9;*/
+.material-listitem.odd {
     background-color: #b5c9c6;
 }
 
-.material-listitem span {
-    font-size: 16px;
+.material-listitem .left {
+    float: left;
+    font-size:16px;
 }
 
-.material-listitem .badge{
-    font-size: 14px;
+.material-listitem .left .userinfo {
+    font-size:12px;
+    margin-top:4px;
 }
 
-.listitem-comments a {
+.material-listitem .left .userinfo .comments {
     color: green;
-    font-size: 10px;
 }
 
-.hero-unit {
-    padding-bottom: 15px;
+.material-listitem .right {
+    line-height: 14px;
 }
 
-.hero-unit .btn {
-    margin-top: 10px;
-    margin-right: 10px;
+.material-listitem .right .label {
+    padding: 2px;
 }
+
+.material-listitem .right i:hover {
+    background-image: url("../img/glyphicons-halflings-white.png");
+}
+
