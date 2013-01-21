@@ -69,12 +69,12 @@ class DatabaseHandler:
     def get_courses(self, id=None, order_by=None, limit=None):
         """Selects courses and the number of materials they have."""
         query = """SELECT courses.id, courses.code, courses.title,
-                courses.faculty, count(materials.id) AS materials
-                FROM courses, materials WHERE courses.id=materials.course_id
+                courses.faculty, (SELECT count(*) FROM materials where
+                 materials.course_id = courses.id) AS materials
+                FROM courses
                 """
-
         if id:
-            query += " AND courses.id=$id"
+            query += " WHERE courses.id=$id"
         if order_by:
             query += " ORDER BY %s" % order_by
         if limit:
@@ -210,8 +210,8 @@ class DatabaseHandler:
             sys.exit()
 
         self.db = web.database(dbn="sqlite", db="kurssit.db")
+        # self.db.ctx.db.text_factory = str
         self.insert = self.db.insert
-        self.db.ctx.db.text_factory = str
 
 if __name__ == "__main__":
     db = DatabaseHandler()

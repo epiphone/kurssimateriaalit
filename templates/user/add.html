@@ -4,7 +4,7 @@ $var show_login_form: True
 
 <div class="container">
   <div class="row">
-    <div class="span8 offset2">
+    <div class="span8 offset2 well">
 
       <div class="page-header">
         <ul class="nav nav-pills">
@@ -27,6 +27,7 @@ $var show_login_form: True
       $if courses != False or error:
         $if courses == []:
           <div class="alert alert-error">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
             <strong>Ei hakutuloksia!</strong>
           </div>
   

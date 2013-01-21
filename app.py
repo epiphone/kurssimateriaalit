@@ -31,7 +31,7 @@ urls = (
   "/like", "Like"
 )
 
-UPLOAD_DIR = ".\\uploads"
+UPLOAD_DIR = os.path.join(".", "uploads")
 # These files are allowed (contents of zipped files will be checked too):
 ALLOWED_FILETYPES = ["jpg", "jpeg", "png", "gif", "bmp", "zip", "pdf", "mpg",
                      "doc", "docx", "xls", "csv", "txt", "rtf", "html", "htm",
@@ -55,7 +55,6 @@ except IOError:
 # Maximum upload file size:
 cgi.maxlen = 10 * 1024 * 1024
 
-
 store = web.session.DiskStore("sessions")
 app = web.application(urls, globals())
 db = models.DatabaseHandler()
@@ -78,7 +77,6 @@ class Download():
         # web.header("Content-Disposition", "attachment; filename=%s" % path.split("\\")[-1])
         web.header("Content-Type", material.type)
         web.header('Transfer-Encoding', 'chunked')
-        print "### Downloading ", path, material
         f = open(path, 'rb')
         while 1:
             buf = f.read(1024 * 2)
@@ -121,7 +119,7 @@ class Upload:
         redirect_url = lambda error: ("/add/%d?error=%s&title=%s&description=%s&tags=%s"
             % (course_id, error, urlencode(title), urlencode(description), urlencode(tags)))
 
-        if re.match(r"^.{4,30}$", title) == None:  # TODO parempi regex?
+        if re.match(r"^.{4,40}$", title) == None:  # TODO parempi regex?
             raise web.seeother(redirect_url("bad_title"))
 
         # Insert material to database, use row id to generate file path:
@@ -131,8 +129,8 @@ class Upload:
         # Create a path from id, eg. 11 becomes ".\\uploads\\000\\011"
         path = create_path(material_id)
         folder = path.split("\\")[0]
-        if not os.path.exists(UPLOAD_DIR + "\\" + folder):
-            os.makedirs(UPLOAD_DIR + "\\" + folder)
+        if not os.path.exists(os.path.join(UPLOAD_DIR, folder)):
+            os.makedirs(os.path.join(UPLOAD_DIR, folder))
 
         try:
             x = web.input(myfile={})
@@ -174,9 +172,12 @@ class Upload:
 
 class Like:
     def GET(self):
+        """'Likes' a material, i.e. inreases it's points by one and adds
+        the material's id to user's 'liked' column. Returns 'false' if failed,
+        otherwise an empty string."""
         id = web.input(id="").id
         if not id or session.privilege < 1:
-            raise web.seeother(web.ctx.env.get("HTTP_REFERER", "/"))
+            return "false"
 
         user = db.select("users", id=session.id)[0]
         material = db.select("materials", id=int(id))[0]
@@ -184,10 +185,10 @@ class Like:
 
         # Don't like if user has already liked this material or owns the material:
         if points_given and id in points_given.split(" ") or material.user_id == user.id:
-            raise web.seeother("/?error=points_given")
+            return "false"
 
         db.like_material(material_id=int(id), user_id=session.id)
-        raise web.seeother(web.ctx.env.get("HTTP_REFERER", "/"))
+        return ""
 
 
 class Add:
@@ -284,18 +285,19 @@ class SendConfirmation:
     def POST(self):
         """Sends confirmation email to given address."""
         email = web.input(email="").email
-        user = db.select("users", id=session.id).list()
-        if not user:
+        try:
+            user = db.select("users", id=session.id)[0]
+        except IndexError:
             return "Käyttäjää ei löytynyt"  # TODO
 
         email_re = r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$"
         if re.match(email_re, email, re.IGNORECASE) == None:  # Invalid email.
             raise web.seeother("/confirm?error=bad_email")
 
-        conf_code = user[0].conf_code
+        conf_code = user.conf_code
         conf_url = "http://%s:8080/confirm/%s" % (socket.gethostbyname(socket.gethostname()), str(conf_code))  # TODO
         subject = "Kurssimateriaalit - Aktivoi käyttäjätilisi"
-        message = """Aktivoi käyttäjätilisi '%s' osoitteessa %s
+        message = u"""Aktivoi käyttäjätilisi '%s' osoitteessa %s
 
                   Spämmiä? Ei hätää; käyttäjätilin poistaminen onnistuu saman
                   osoitteen kautta""" % (user.name, conf_url)
@@ -321,13 +323,13 @@ class Register:
         i = web.input(username=None, password1=None, password2=None)
         name, passwd1, passwd2 = i["username"], i["password1"], i["password2"]
 
-        username_re = r"^[a-zåäöA-ZÅÄÖ0-9]{4,20}$"
-        password_re = r"^(?=.*\d)(?=.*[a-zåäö])(?=.*[A-ZÅÄÖ])[0-9a-zåäöA-ZÅÄÖ!@#%]{8,80}$"
+        username_re = r"[A-ZÅÄÖ0-9]{4,20}"
+        password_re = r"^(?=.*\d)(?=.*[a-zåäö])(?=.*[A-ZÅÄÖ])[0-9a-zöäåA-ZÅÄÖ!@#%]{8,80}$"
 
         validators = [
             ((lambda n, p1, p2: not n or not p1 or not p2), "empty_reg_fields"),
             ((lambda n, p1, p2: p1 != p2), "bad_match"),
-            ((lambda n, p1, p2: re.match(username_re, n) == None), "bad_reg_username"),
+            ((lambda n, p1, p2: re.match(username_re, n, re.IGNORECASE) == None), "bad_reg_username"),
             ((lambda n, p1, p2: re.match(password_re, p1) == None), "bad_reg_password"),
             ((lambda n, p1, p2: db.select("users", name=n).list()), "username_taken")
         ]
@@ -337,9 +339,10 @@ class Register:
                 raise web.seeother("/register?error=%s&username=%s" % (msg, name))
 
         # Input validated, add user to database:
-        salt = uuid.uuid4().hex
-        hash = hashlib.sha256(passwd1 + salt).hexdigest()
-        conf_code = hashlib.md5(uuid.uuid4().hex + name).hexdigest()
+        salt = unicode(uuid.uuid4().hex)
+        hash = unicode(hashlib.sha256(passwd1.encode("utf-8") + salt).hexdigest())
+        conf_code = unicode(hashlib.md5(uuid.uuid4().hex + name.encode("utf-8")).hexdigest())
+        print db.db.ctx.db.text_factory
         id = db.insert("users", name=name, hash=hash, salt=salt,
             conf_code=conf_code, privilege=0)
 
@@ -364,7 +367,7 @@ class Login:
 
         try:
             # Login OK:
-            if hashlib.sha256(passwd + ident.salt).hexdigest() == ident.hash:
+            if hashlib.sha256(passwd.encode("utf-8") + str(ident.salt)).hexdigest() == ident.hash:
                 session.login = 1
                 session.privilege = ident.privilege
                 session.user = ident.name
@@ -386,13 +389,12 @@ class Login:
 class Course:
     def GET(self, id):
         id = int(id)
-        course = db.select("courses", id=id).list()
-        if course:
-            course = course[0]
-        else:
+        try:
+            course = db.select("courses", id=id)[0]
+        except IndexError:
             raise web.seeother("/")
 
-        materials = db.get_materials(id)
+        materials = db.get_materials(course_id=id)
 
         render = create_render(session.privilege)
         return render.course(course, materials)
@@ -417,11 +419,16 @@ class Materials:
 class Index:
     def GET(self):
         """Index page with lists of newest and most popular materials."""
-        new_materials = db.get_materials(order_by="materials.date_added desc", limit=10)
-        top_materials = db.get_materials(order_by="materials.points desc", limit=10)
+        materials = db.get_materials(order_by="materials.date_added desc", limit=8)
+        courses = db.get_courses(limit=8)
 
         render = create_render(session.privilege)
-        return render.index(new_materials, top_materials)
+        return render.index(materials, courses)
+
+    def POST(self):
+        """Ajax test."""
+        msg = web.input().msg
+        return "{'vastaus':'palvelin: %s'}" % msg
 
 
 class Logout:
@@ -436,6 +443,7 @@ class Logout:
 ### UTILITIES ###
 
 def logged():
+    """Returns True if user is logged in."""
     if session.login == 1:
         return True
     return False
@@ -444,13 +452,13 @@ def logged():
 def create_path(id):
     """Returns a file path based on given material id.
 
-    >>> create_path(13) == r".\\uploads\\000\\013"
+    >>> create_path(13) == os.path.join(UPLOAD_DIR, "000", "013")
     True
     """
     id = str(id)
     path = (6 - len(id)) * "0" + id
     folder = path[:3]
-    return UPLOAD_DIR + "\\" + folder + "\\" + path[3:]
+    return os.path.join(UPLOAD_DIR, folder, path[3:])
 
 
 def is_valid_zip(path):
@@ -475,7 +483,6 @@ def delete_file(path):
         os.remove(path)
     except:
         return False
-    print "Deleting file", path
     return True
 
 
@@ -488,6 +495,8 @@ def urldecode(url):
 
 
 def create_render(privilege):
+    """Create a render object based on user's privilege; different privileges
+    use different HTML templates."""
     my_globals = {"session": session, "format_date": format_date}
     if logged():
         if privilege == 0:

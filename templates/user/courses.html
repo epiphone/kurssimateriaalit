@@ -7,26 +7,41 @@ $var show_login_form: True
   <div class="page-header">
     <h1><a href="/">Etusivu</a> / Kurssit<small></small></h1>
   </div>
-  
+
+  <!-- NAVBAR -->
+  <div class="navbar">
+    <div class="navbar-inner">
+      <a class="brand" href="#">Title</a>
+      <ul class="nav">
+        <li class="active"><a href="#">Home</a></li>
+        <li><a href="#">Link</a></li>
+        <li><a href="#">Link</a></li>
+      </ul>
+      <form class="navbar-search pull-left">
+        <input type="text" class="search-query" placeholder="Search">
+      </form>
+    </div>
+  </div>
+
   <div class="row">
     <!-- COURSES -->
     <div class="span12">
       <table class="table linkable">
-          <thead>
-              <tr>
-                  <th>Tunnus</th>
-                  <th>Kurssi</th>
-                  <th>Materiaaleja</th>
-              </tr>
-          </thead>
-          <tbody>    
-              $for c in courses:
-                  <tr value=$c.id onclick="document.location='/courses/$c.id'">
-                      <td>$c.code</td>
-                      <td>$c.title</td>
-                      <td>$c.materials</td>
-                  </tr>
-          </tbody>
+        <thead>
+          <tr>
+            <th>Tunnus</th>
+            <th>Kurssi</th>
+            <th>Materiaaleja</th>
+          </tr>
+        </thead>
+        <tbody>    
+          $for c in courses:
+          <tr value=$c.id onclick="document.location='/courses/$c.id'">
+            <td>$c.code</td>
+            <td>$c.title</td>
+            <td>$c.materials</td>
+          </tr>
+        </tbody>
       </table>
     </div>   
-</div>
+  </div>

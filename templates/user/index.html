@@ -1,4 +1,4 @@
-$def with (new_materials, top_materials)
+$def with (materials, courses)
 $var title: Kurssimateriaalit 0.1 - Index
 $var show_login_form: True
 
@@ -18,82 +18,122 @@ $var show_login_form: True
   <div class="row">
     <!-- NEW MATERIALS -->
     <div class="span4">
-      <!-- NAVBAR -->
       <div class="navbar">
         <div class="navbar-inner">
           <div class="container">
-            <a class="brand" href="#">Uusimmat materiaalit</a>
+            <a class="brand" href="#">Kurssit</a>
           </div>
         </div>
       </div>
-      <!-- ITEMS -->
-      $for m in new_materials:
-      <div class="material-listitem $loop.parity">
-        <div class="left">
-          <div class="course">
-            <span class="label label-info">$m.code</span><a rel="tooltip" data-placement="right" title="$m.description" href="/download/$m.id"> $m.title</a>
-            <small>.$m.type</small>
-          </div>
 
-          <div class="userinfo">
-            <!-- <i class="icon-user"></i> -->
-            <a href="#">$m.name</a> <small>$format_date(m.date_added) - 
-            <a href="#" class="comments">Kommentteja: 12</a></small>
-          </div>
-        </div><!-- /.left -->
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Tunnus</th>
+            <th>Kurssi</th>
+            <th>Lkm</th>
+          </tr>
+        </thead>
+        <tbody>    
+          $for c in courses:
+          <tr value=$c.id onclick="document.location='/courses/$c.id'">
+            <td>$c.code</td>
+            <td>$c.title</td>
+            <td>$c.materials</td>
+          </tr>
+        </tbody>
+      </table>
 
-        <div class="right pull-right">
-          <span class="badge badge-success pull-right">$m.points</span>
-          <a href="/like?id=$m.id"><i class="icon-plus"></i></a>
-        </div>
-      </div><!--/.material-listitem-->
-    </div><!--/.span*-->
+    </div><!-- ./span* -->
 
 
     <!-- TOP MATERIALS -->
-    <div class="span4">
+    <div class="span6">
+      <!-- <div class="well"> -->
       <!-- NAVBAR -->
       <div class="navbar">
         <div class="navbar-inner">
           <div class="container">
-            <a class="brand" href="#">Parhaat materiaalit</a>
+            <a class="brand" href="#">Materiaalit</a>
+            <div class="nav-collapse collapse">
+              <ul class="nav">
+                <li class="dropdown">
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Pisteet <b class="caret"></b></a>
+                  <ul class="dropdown-menu">
+                    <li><a href="#">Action</a></li>
+                    <li><a href="#">Another action</a></li>
+                    <li><a href="#">Something else here</a></li>
+                    <li class="divider"></li>
+                    <li class="nav-header">Nav header</li>
+                    <li><a href="#">Separated link</a></li>
+                    <li><a href="#">One more separated link</a></li>
+                  </ul>
+                </li>
+              </ul>
+              <form class="navbar-search pull-right">
+                <input class="span2 search-query" type="text" placeholder="Hakusana">
+              </form>
+              
+            </div><!--/.nav-collapse -->
           </div>
         </div>
       </div>
       <!-- ITEMS -->
-      $for m in top_materials:
+      $for m in materials:
       <div class="material-listitem $loop.parity">
-        <div class="left">
-          <div class="course">
-            <span class="label label-info">$m.code</span><a rel="tooltip" data-placement="right" title="$m.description" href="/download/$m.id"> $m.title</a>
-            <small>.$m.type</small>
-          </div>
-
-          <div class="userinfo">
-            <!-- <i class="icon-user"></i> -->
-            <a href="#">$m.name</a> <small>$format_date(m.date_added) - 
-            <a href="#" class="comments">Kommentteja: 12</a></small>
-          </div>
-        </div><!-- /.left -->
-
-        <div class="right pull-right">
-          <span class="badge badge-success pull-right">$m.points</span>
-          <a href="/like?id=$m.id"><i class="icon-plus"></i></a>
+        <div class="upper">
+          <span class="label label-info">$m.code</span>
+          <a rel="tooltip" title="$m.description" href="/download/$m.id"> $m.title</a>
+          <small>.$m.type</small>
         </div>
-      </div><!--/.material-listitem-->
-    </div><!--/.span*-->
 
+        <div class="lower">
+          <!-- <i class="icon-user"></i> -->
+          <a href="#">$m.name</a> <small>$format_date(m.date_added) - 
+          <a href="#" class="comments">Kommentteja: 12</a></small>
+          <span class="points pull-right" style="">
+            <span class="badge badge-success pull-right">$m.points</span>
+            <a href=""><i class="icon-plus"></i></a> 
+          </span> 
+        </div><!--/.lower-->        
+      </div><!--/.material-listitem-->
+    <!-- </div>/.well -->
+  </div><!--/.span*-->
   </div><!--/.row-->
 </div><!--/.container-->
 
 <script> 
 window.onload = function(){
-    $$("[rel='tooltip']").tooltip();
-    $$(".right>a").css("visibility", "hidden");
+    // Enable tooltips on course names:
+    $$("span[rel='tooltip']").tooltip();
+    // Show plus-signs next to points displays when hovering:
+    $$(".lower span a").css("visibility", "hidden");
     $$(".material-listitem").hover(function(){
-        $$(this).children(".right").children("a").css("visibility", "visible");
+        $$(this).find(".points>a").css("visibility", "visible");
     }, function() {
-        $$(this).children(".right").children("a").css("visibility", "hidden");
+        $$(this).find(".points>a").css("visibility", "hidden");
+    });
+    // Perform Ajax operation when liking a material:
+    $$(".lower span a").click(function () {
+        var id = $$(this).attr("data-id"),
+            clicked = this,
+            points_display = $$(clicked).siblings(":first");
+        $$.ajax({
+            type: "GET",
+            url: "/like",
+            data: {id: id},
+            success: function(data) {
+                if (data=="") {
+                    var points = parseInt($$(points_display).text()) + 1;
+                    $$(points_display).text(points);
+                } else {
+                    $$(points_display).removeClass("badge-success").addClass("badge-important");
+                    $$(clicked).remove();
+                }
+            },
+            dataType: "text"
+        });
+    return false;
     });
 }
 </script>

@@ -4,7 +4,7 @@ $var show_login_form: True
 
 <div class="container">
   <div class="row">
-    <div class="span8 offset2">
+    <div class="span8 offset2 well">
 
       <div class="page-header">
         <ul class="nav nav-pills">
@@ -25,11 +25,9 @@ $var show_login_form: True
                 <strong>Virhe!</strong> Tiedostotyyppi ei ole sallittu.
               $elif error == "bad_zip":
                 <strong>Virhe!</strong> Zip-tiedosto sisältää ei-sallittuja tiedostoja.
-              $elif error == "bad_filesize":
-                <strong>Virhe!</strong> Tiedoston maksimikoko on 10MB.
             </div>
           <label>Materiaalin nimi (4-30 merkkiä) *</label>
-          <input type="text" name="title" value="$material_title" placeholder="Materiaalin nimi" required pattern="^.{4,30}$$">
+          <input type="text" name="title" value="$material_title" placeholder="Materiaalin nimi" required pattern="^.{4,40}$$">
           
           <label>Kuvaus (Enintään 100 merkkiä)</label>
           <textarea rows="3" name="description" placeholder="Lyhyt kuvaus...">$description</textarea>
@@ -51,17 +49,15 @@ $var show_login_form: True
 </div> <!-- container -->   
  
 <script>
-// Focus on material form:
 window.onload = function(){
+    // On load, focus on either title or file input:
     $if error in ["bad_filesize", "bad_filetype", "bad_zip"]:
         $$("input[name='myfile']").focus();
     $else:
         $$("input[name='title']").select();
 
-    //binds to onchange event of your input field
     $$("input[type='file']").bind("change", function() {
         $$(".alert").remove();
-        //this.files[0].size gets the size of your file.
         if (this.files[0].size > 10 * 1024 * 1024) {
             $$("button").attr("disabled", true);
             $$("label#filelabel").addClass("text-error");
@@ -69,7 +65,6 @@ window.onload = function(){
             $$("button").attr("disabled", false);
             $$("label#filelabel").removeClass("text-error");
         }
-
     });
   }
 </script>

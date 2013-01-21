@@ -6,36 +6,47 @@ $var show_login_form: False
   <div class="row">
     
     <!-- LOGIN FORM -->
-    <div class="span5 offset1">
-      <form class="form-signin" action="/login" method="POST">
+    <div class="span4 offset1">
+      <form class="form form-signin" action="/login" method="POST">
         <legend><h2 class="form-signin-heading">Kirjaudu sisään</h2></legend>
         $if error == "bad_login":
-          <span class="label label-important"></i>Virheellinen käyttäjänimi tai salasana</span>
-        <input type="text" name="username" class="input-block-level" placeholder="Käyttäjänimi">
-        <input type="password" name="password" class="input-block-level" placeholder="Salasana">
+          <div class="alert alert-error">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <strong>Virhe!</strong> Virheellinen käyttäjänimi tai salasana.
+          </div>
+        <input type="text" name="username" class="input-block-level" placeholder="Käyttäjänimi" required>
+        <input type="password" name="password" class="input-block-level" placeholder="Salasana" required>
         <button class="btn btn-large btn-primary" type="submit">Kirjaudu</button>
       </form>
     </div>
 
     <!-- REGISTER FORM -->
     <div class="span5">
-      <form class="form form-register form-signin" action="/register" method="POST">
+      <form class="form form-signin" action="/register" method="POST">
         <legend><h2 class="form-signin-heading">Rekisteröidy</h2></legend>
-        $if error == "empty_fields":
-          <span class="label label-important">Lomake sisältää tyhjiä kenttiä</span>
+        $if error and error != "bad_login":
+          <div class="alert alert-error">
+          $if error == "empty_fields":
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <strong>Virhe!</strong> Lomake sisältää tyhjiä kenttiä.
+          $elif error == "username_taken":
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <strong>Virhe!</strong> Käyttäjänimi on varattu.
+          $elif error == "bad_reg_username":
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <strong>Virhe!</strong> Käyttäjänimi ei ole sallitussa muodossa.
+          $elif error == "bad_reg_password":
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <strong>Virhe!</strong> Salasana ei ole sallitussa muodossa.
+          $else:
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <strong>Virhe!</strong> Salasana ei vastaa varmistusta.
+          </div>
         <!-- Username -->
-        $if error == "username_taken":
-          <span class="label label-important">Käyttäjänimi on varattu</span>
-        $elif error == "bad_reg_username":
-          <span class="label label-important">Käyttäjänimi ei ole sallitussa muodossa</span>
         <input type="text" name="username" class="input-block-level" placeholder="Käyttäjänimi" required pattern="[a-zåäöA-ZÅÄÖ0-9]{4,20}">
         <span class="help-inline">- Sallitut merkit: ä-ö, Ä-Ö, 0-9<br>- Pituus 4-20 merkkiä</span>
-        <!-- Password -->
         <div><br><br></div>
-        $if error == "bad_reg_password":
-          <span class="label label-important">Salasana ei ole salitussa muodossa</span>
-        $elif error == "bad_match":
-          <span class="label label-important">Salasana ei vastaa varmistusta</span>
+        <!-- Password -->
         <input type="password" id="password1" name="password1" class="input-block-level" placeholder="Salasana" required pattern="(?=.*\d)(?=.*[a-zåäö])(?=.*[A-ZÅÄÖ])[0-9a-zåäöA-ZÅÄÖ!@#%]{8,80}">
         <!-- Password again -->
         <input type="password" id="password2" name="password2" class="input-block-level" placeholder="Salasana uudestaan">

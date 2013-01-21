@@ -80,7 +80,9 @@ body {
     padding: 2px;
     padding-bottom: 4px;
     margin-bottom:4px;
-    background-color:#e1e8d9;
+    background-color: #FEFCFA;
+    /*background-color:#e1e8d9; tosi vaalea vihertävä*/
+    /*background-color: #C4D4D1;*/
     border-radius: 4px 4px 4px 4px;   
 }
 
@@ -88,29 +90,23 @@ body {
     background-color: #b5c9c6;
 }
 
-.material-listitem .left {
-    float: left;
-    font-size:16px;
+.material-listitem .lower {
+    margin-top: 10px;
 }
-
-.material-listitem .left .userinfo {
-    font-size:12px;
+.material-listitem .lower {
+    font-size:13px;
     margin-top:4px;
 }
 
-.material-listitem .left .userinfo .comments {
+.material-listitem .lower .comments {
     color: green;
 }
 
-.material-listitem .right {
-    line-height: 14px;
+.material-listitem .lower .badge {
+    margin-top:2px;
 }
 
-.material-listitem .right .label {
-    padding: 2px;
-}
-
-.material-listitem .right i:hover {
+.material-listitem .lower i:hover {
     background-image: url("../img/glyphicons-halflings-white.png");
 }
 
