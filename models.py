@@ -92,7 +92,7 @@ class DatabaseHandler:
 
     ### MATERIALS ###
 
-    def get_materials(self, course_id=None, user_id=None, order_by=None, limit=None):
+    def get_materials(self, id=None, course_id=None, user_id=None, order_by=None, limit=None):
         """Returns either all selected materials or only a selected course's materials.
         Includes information about the course and the user who own's the material.
 
@@ -111,8 +111,9 @@ class DatabaseHandler:
                 courses.title AS course_title, courses.faculty, users.name,
                 users.points AS user_points FROM materials,courses,users
                  WHERE materials.user_id = users.id AND materials.course_id =
-                 courses.id"""
-
+                courses.id"""
+        if id:
+            query += " AND materials.id=$id"
         if course_id:
             query += " AND courses.id=$course_id"
         if user_id:

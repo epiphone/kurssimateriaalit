@@ -20,7 +20,6 @@ urls = (
   "/login", "Login",
   "/logout", "Logout",
   "/courses", "Courses",
-  "/materials", "Materials",
   "/courses/(\d+)", "Course",
   "/register", "Register",
   "/confirm", "SendConfirmation",
@@ -28,7 +27,9 @@ urls = (
   "/add", "Add",
   "/add/(\d+)", "Upload",
   "/download/(\d+)", "Download",
-  "/like", "Like"
+  "/like", "Like",
+  "/materials", "Materials",
+  "/materials/(\d+)", "Material"
 )
 
 UPLOAD_DIR = os.path.join(".", "uploads")
@@ -75,7 +76,7 @@ class Download():
         material = db.select("materials", id=int(id))[0]
         path = create_path(id) + "." + material.type
         # web.header("Content-Disposition", "attachment; filename=%s" % path.split("\\")[-1])
-        web.header("Content-Type", material.type)
+        web.header("Content-Type", material.type) # TODO tyyppi!
         web.header('Transfer-Encoding', 'chunked')
         f = open(path, 'rb')
         while 1:
@@ -410,25 +411,42 @@ class Courses:
 
 class Materials:
     def GET(self):
-        materials = db.select("materials", limit=10)
+        """Returns a piece of html containing a list of materials."""
+        orders = {"new": ["materials.date_added desc", "Uusimmat materiaalit"],
+                  "hot": ["materials.comments desc", "Kuumimmat materiaalit"],
+                  "top": ["materials.points desc", "Parhaat materiaalit"]}
 
-        render = create_render(session.privilege)
-        return render.materials(materials)
+        query_order = web.input(order="new").order
+        if not query_order in orders:
+            return "invalid sort"  # TODO
+        order = orders[query_order]
+
+        materials = db.get_materials(order_by=order[0], limit=8)
+        render = create_render(session.privilege, base=False)
+        return render.list_all(materials, title=order[1])
 
 
 class Index:
     def GET(self):
         """Index page with lists of newest and most popular materials."""
-        materials = db.get_materials(order_by="materials.date_added desc", limit=8)
-        courses = db.get_courses(limit=8)
+        new_materials = db.get_materials(order_by="materials.date_added desc", limit=8)
+        top_materials = db.get_materials(order_by="materials.points desc", limit=8)
+        hot_materials = db.get_materials(order_by="materials.comments desc", limit=8)
 
         render = create_render(session.privilege)
-        return render.index(materials, courses)
+        return render.index(new_materials, top_materials, hot_materials)
 
-    def POST(self):
-        """Ajax test."""
-        msg = web.input().msg
-        return "{'vastaus':'palvelin: %s'}" % msg
+
+class Comments:
+    def GET(self):
+        """Returns a piece of HTML containing info about material and its comments."""
+        id = web.input().id
+        web.header("Content-Type", "text/html")
+
+        globals = {"format_date": format_date, "format_size": format_size}
+        render = web.template.render("templates/user", globals=globals)
+        m = db.get_materials(id=int(id))[0]
+        return render.list_single(m)
 
 
 class Logout:
@@ -494,19 +512,20 @@ def urldecode(url):
     return urllib2.unquote(url) if url else ""
 
 
-def create_render(privilege):
+def create_render(privilege, base=True):
     """Create a render object based on user's privilege; different privileges
     use different HTML templates."""
-    my_globals = {"session": session, "format_date": format_date}
+    my_globals = {"session": session, "format_date": format_date, "format_size": format_size}
+    base = "base" if base else None
     if logged():
         if privilege == 0:
-            render = web.template.render('templates/reader', base='base', globals=my_globals)
+            render = web.template.render("templates/reader", base=base, globals=my_globals)
         elif privilege == 1:
-            render = web.template.render('templates/user', base='base', globals=my_globals)
+            render = web.template.render("templates/user", base=base, globals=my_globals)
         elif privilege == 2:
-            render = web.template.render('templates/admin', base='base', globals=my_globals)
+            render = web.template.render("templates/admin", base=base, globals=my_globals)
     else:
-        render = web.template.render('templates/reader', base='base', globals=my_globals)
+        render = web.template.render("templates/reader", base=base, globals=my_globals)
     return render
 
 
@@ -518,6 +537,20 @@ def format_date(date):
     """
     parts = date.split("-")
     return "%d.%d.%s" % (int(parts[2]), int(parts[1]), parts[0])
+
+
+def format_size(size):
+    """Formats a file size into a string.
+
+    >>> format_size(1023) == "<1MB" and format_size(2800) == "2.8MB"
+    True
+    """
+    size_str = str(size)
+    if size < 1024:
+        return "<1MB"
+    if size < 10000:
+        return size_str[0] + "." + size_str[1] + "MB"
+    return size_str[:2] + "." + size_str[2] + "MB"
 
 
 def doctest():

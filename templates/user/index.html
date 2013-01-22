@@ -1,4 +1,4 @@
-$def with (materials, courses)
+$def with (new_materials, top_materials, hot_materials)
 $var title: Kurssimateriaalit 0.1 - Index
 $var show_login_form: True
 
@@ -9,78 +9,28 @@ $var show_login_form: True
     <h1>Kurssimateriaalit 0.1<small>prototyyppi</small></h1>
     <p>Jaa muistiinpanosi, tiivistelmät, mindmapit, mitkälie. tjsp.</p>
     <br>
-    <a href="/materials" class="btn btn-primary btn-large">Selaa materiaaleja &raquo;</a>
-    <a href="/courses" class="btn btn-primary btn-large">Selaa kursseja &raquo;</a>
-    <a href="/add" class="btn btn-primary btn-large">Lisää oma &raquo;</a>
+    <!-- <a href="/materials" class="btn btn-primary btn-large">Lisää &raquo;</a>
+    <a href="/courses" class="btn btn-primary btn-large">Selaa  &raquo;</a>
+    <a href="/add" class="btn btn-primary btn-large">Hae &raquo;</a> -->
+    <div class="row" style="text-align:center;">
+        <a href="/courses" class="btn btn-primary btn-large">Hae materiaaleja <i class="icon-search"></i></a>
+        <a href="/courses" class="btn btn-primary btn-large" style="min-width:140px;">Lisää uusi <i class="icon-plus"></i></a>
+    </div>
   </div>
 
   
   <div class="row">
     <!-- NEW MATERIALS -->
     <div class="span4">
-      <div class="navbar">
-        <div class="navbar-inner">
-          <div class="container">
-            <a class="brand" href="#">Kurssit</a>
-          </div>
-        </div>
-      </div>
-
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Tunnus</th>
-            <th>Kurssi</th>
-            <th>Lkm</th>
-          </tr>
-        </thead>
-        <tbody>    
-          $for c in courses:
-          <tr value=$c.id onclick="document.location='/courses/$c.id'">
-            <td>$c.code</td>
-            <td>$c.title</td>
-            <td>$c.materials</td>
-          </tr>
-        </tbody>
-      </table>
-
-    </div><!-- ./span* -->
-
-
-    <!-- TOP MATERIALS -->
-    <div class="span6">
       <!-- <div class="well"> -->
-      <!-- NAVBAR -->
       <div class="navbar">
         <div class="navbar-inner">
-          <div class="container">
-            <a class="brand" href="#">Materiaalit</a>
-            <div class="nav-collapse collapse">
-              <ul class="nav">
-                <li class="dropdown">
-                  <a href="#" class="dropdown-toggle" data-toggle="dropdown">Pisteet <b class="caret"></b></a>
-                  <ul class="dropdown-menu">
-                    <li><a href="#">Action</a></li>
-                    <li><a href="#">Another action</a></li>
-                    <li><a href="#">Something else here</a></li>
-                    <li class="divider"></li>
-                    <li class="nav-header">Nav header</li>
-                    <li><a href="#">Separated link</a></li>
-                    <li><a href="#">One more separated link</a></li>
-                  </ul>
-                </li>
-              </ul>
-              <form class="navbar-search pull-right">
-                <input class="span2 search-query" type="text" placeholder="Hakusana">
-              </form>
-              
-            </div><!--/.nav-collapse -->
-          </div>
+          <a class="brand">Uusimmat</a>
         </div>
       </div>
       <!-- ITEMS -->
-      $for m in materials:
-      <div class="material-listitem $loop.parity">
+      $for m in new_materials:
+      <div class="listitem $loop.parity">
         <div class="upper">
           <span class="label label-info">$m.code</span>
           <a rel="tooltip" title="$m.description" href="/download/$m.id"> $m.title</a>
@@ -98,8 +48,50 @@ $var show_login_form: True
         </div><!--/.lower-->        
       </div><!--/.material-listitem-->
     <!-- </div>/.well -->
-  </div><!--/.span*-->
+    </div><!--/.span*-->
+
+    <!-- HOT MATERIALS -->
+    <div class="span4">
+      <!-- VIEW #1 -->
+      <div class="list">
+        <div class="spinner"></div>  
+      </div>
+    </div><!--/.span*-->
+
+    <!-- TOP MATERIALS -->
+    <div class="span4">
+      <!-- <div class="well"> -->
+      <div class="navbar">
+        <div class="navbar-inner">
+          <a class="brand">Parhaat</a>
+        </div>
+      </div>
+      <!-- ITEMS -->
+      $for m in hot_materials:
+      <div class="listitem $loop.parity">
+        <div class="upper">
+          <span class="label label-info">$m.code</span>
+          <a rel="tooltip" title="$m.description" href="/download/$m.id"> $m.title</a>
+          <!-- <small>.$m.type</small> -->
+        </div>
+
+        <div class="lower">
+          <!-- <i class="icon-user"></i> -->
+          <a href="#">$m.name</a> <small>$format_date(m.date_added) - 
+          <a href="#" class="comments">Kommentteja: 12</a> - .$m.type $format_size(m.size)</small>
+          <span class="points pull-right" style="">
+            <span class="badge badge-success pull-right">$m.points</span>
+            <a href=""><i class="icon-plus"></i></a> 
+          </span> 
+        </div><!--/.lower-->        
+      </div><!--/.material-listitem-->
+    <!-- </div>/.well -->
+    </div><!--/.span*-->
+    
+
+    
   </div><!--/.row-->
+
 </div><!--/.container-->
 
 <script> 
@@ -108,11 +100,25 @@ window.onload = function(){
     $$("span[rel='tooltip']").tooltip();
     // Show plus-signs next to points displays when hovering:
     $$(".lower span a").css("visibility", "hidden");
-    $$(".material-listitem").hover(function(){
+    $$(".listitem").hover(function(){
         $$(this).find(".points>a").css("visibility", "visible");
     }, function() {
         $$(this).find(".points>a").css("visibility", "hidden");
     });
+    // Load materials:
+    $$.fn.load_materials = function(order) {
+        this.children(".spinner").css("display", "block");
+        var param = order == undefined ? "" : "?order=" + order;
+        this.load("materials" + param);
+    };
+    $$(".list").load_materials();
+    // Get a material's comments:
+    $$(".list .listitem").live("click", function(){
+        $$(this).siblings(".spinner").css("display", "block");
+        var id = $$(this).attr("data-id");
+        $$(this).parents().eq(0).load("/comments?id=" + id);
+    })
+    
     // Perform Ajax operation when liking a material:
     $$(".lower span a").click(function () {
         var id = $$(this).attr("data-id"),

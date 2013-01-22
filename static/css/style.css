@@ -1,7 +1,7 @@
 body {
     padding-top: 60px;
     padding-bottom: 40px;
-    background: url(/static/img/cream.png) repeat 0 0;
+    /*background: url(/static/img/arches.png) repeat 0 0;*/
 }
 
 /* ### NAVBAR ### */
@@ -75,7 +75,7 @@ body {
 
 /* ### INDEX LISTS ### */
 
-.material-listitem {
+.listitem {
     min-height: 48px;
     padding: 2px;
     padding-bottom: 4px;
@@ -86,27 +86,44 @@ body {
     border-radius: 4px 4px 4px 4px;   
 }
 
-.material-listitem.odd {
+.listitem.odd {
     background-color: #b5c9c6;
 }
 
-.material-listitem .lower {
+.listitem .lower {
     margin-top: 10px;
 }
-.material-listitem .lower {
+.listitem .lower {
     font-size:13px;
     margin-top:4px;
 }
 
-.material-listitem .lower .comments {
+.listitem .lower .comments {
     color: green;
 }
 
-.material-listitem .lower .badge {
+.listitem .lower .badge {
     margin-top:2px;
 }
 
-.material-listitem .lower i:hover {
+.listitem .lower i:hover {
     background-image: url("../img/glyphicons-halflings-white.png");
 }
 
+.list {
+    position: relative;
+}
+
+.spinner {
+    display:none;
+    position: absolute;
+    z-index: 1000;
+    height:     100%;
+    width:      100%;
+    left:0;
+    top:0;
+    background: rgba( 255, 255, 255, .8 ) 
+                url('http://i.stack.imgur.com/FhHRx.gif') 
+                50% 50% 
+                no-repeat;
+}

@@ -1,0 +1,24 @@
+$def with (m)
+<div class="navbar">
+  <div class="navbar-inner">
+    <a class="brand">Parhaat</a>
+  </div>
+</div>
+<!-- ITEMS -->
+<div class="listitem odd">
+  <div class="upper">
+    <span class="label label-info">$m.code</span>
+    <a rel="tooltip" title="$m.description" href="/download/$m.id"> $m.title</a>
+    <!-- <small>.$m.type</small> -->
+  </div>
+
+  <div class="lower">
+    <!-- <i class="icon-user"></i> -->
+    <a href="#">$m.name</a> <small>$format_date(m.date_added) - 
+    <a href="#" class="comments">Kommentteja: 12</a> - .$m.type $format_size(m.size)</small>
+    <span class="points pull-right" style="">
+      <span class="badge badge-success pull-right">$m.points</span>
+      <a href=""><i class="icon-plus"></i></a> 
+    </span> 
+  </div><!--/.lower-->        
+        </div><!--/.material-listitem-->
