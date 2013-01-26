@@ -10,8 +10,6 @@ $def with (content)
     <link rel="stylesheet" type="text/css" href="/static/css/bootstrap-responsive.min.css">
 </head>
 <body>
-  
-      
      <div class="navbar navbar-inverse navbar-fixed-top">
       <div class="navbar-inner">
         <div class="container">
@@ -19,17 +17,6 @@ $def with (content)
             <a class="brand active" href="/">Kurssimateriaalit 0.1</a>
           $else:
             <a class="brand" href="/">Kurssimateriaalit 0.1</a>
-          <ul class="nav">
-            $if content.title.endswith("Kurssit"):
-                <li class="active"><a href="/courses">Kurssit</a></li>
-                <li><a href="/materials">Materiaalit</a></li>
-            $elif content.title.endswith("Materiaalit"):
-                <li><a href="/courses">Kurssit</a></li>
-                <li class="active"><a href="/materials">Materiaalit</a></li>
-            $else:
-                <li><a href="/courses">Kurssit</a></li>
-                <li><a href="/materials">Materiaalit</a></li>  
-          </ul>
 
           $if session.login:
             $if session.privilege == 0:
@@ -60,9 +47,9 @@ $def with (content)
 
     $:content
     
-    <!-- Supposedly makes pages load faster..? -->
     <script src="/static/js/jquery.js"></script>
     <script src="/static/js/bootstrap.min.js"></script>
-</script>
+    <script src="/static/js/jquery.tablesorter.min.js"></script>
+    
 </body>
 </html>

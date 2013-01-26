@@ -1,24 +1,51 @@
-$def with (m)
-<div class="navbar">
-  <div class="navbar-inner">
-    <a class="brand">Parhaat</a>
+$def with (material, comments, title)
+$# Renders a single material and its comments.
+
+<!-- INFO -->
+<div class="material-info">
+  <div class="upper">
+    <a href="">$material.code</a> $material.title
+  </div>
+  <div class="lower">
+    <a href="" data-id="$material.user_id" class="user-link">$material.name</a> $format_date(material.date_added) - $material.points tykkäystä .$material.type $format_size(material.size)
+    </span> 
+  </div>
+  <br>
+  $if material.description:
+    <blockquote>
+      $material.description
+    </blockquote>
+  $else:
+    Ei kuvausta.
+</div><!--/.material-info-->
+
+<!-- BUTTONS -->
+<div class="material-buttons">
+  <div>
+    <a class="btn btn-like">Tykkää <i class="icon-thumbs-up"></i></a>
+    <a href="/download/$material.id" class="btn">Lataa <i class="icon-file"></i></a>
+    $if material.user_id == session.id:
+      <a href="/delete/$material.id" class="btn btn-danger">Poista <i class="icon-remove"></i></a>
   </div>
 </div>
-<!-- ITEMS -->
-<div class="listitem odd">
-  <div class="upper">
-    <span class="label label-info">$m.code</span>
-    <a rel="tooltip" title="$m.description" href="/download/$m.id"> $m.title</a>
-    <!-- <small>.$m.type</small> -->
-  </div>
 
-  <div class="lower">
-    <!-- <i class="icon-user"></i> -->
-    <a href="#">$m.name</a> <small>$format_date(m.date_added) - 
-    <a href="#" class="comments">Kommentteja: 12</a> - .$m.type $format_size(m.size)</small>
-    <span class="points pull-right" style="">
-      <span class="badge badge-success pull-right">$m.points</span>
-      <a href=""><i class="icon-plus"></i></a> 
-    </span> 
-  </div><!--/.lower-->        
-        </div><!--/.material-listitem-->
+<!-- COMMENTS -->
+<div class="material-comments">
+  $if comments:
+    <strong>Kommentit:</strong> ($material.comments kpl)
+  $else:
+    Ei kommentteja
+    <br>
+  $for comment in comments:
+    <div class="commentitem">
+      <div class="author"><a href="#">$comment.name</a> - $format_time(comment.date_added)</div>
+      <p style="font-size:14px;word-wrap:break-word">$comment.content</p>
+    </div>
+    <hr>
+  <div class="comment-form">
+    <form>
+      <textarea rows="3" placeholder="Maksimipituus 300 merkkiä"></textarea>
+      <a class="btn btn-comment pull-right" data-id="$material.id" href="">Lisää kommentti <i class="icon-comment"></i></a>
+    </form>
+  </div>
+</div>

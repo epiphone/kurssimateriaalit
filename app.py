@@ -28,8 +28,10 @@ urls = (
   "/add/(\d+)", "Upload",
   "/download/(\d+)", "Download",
   "/like", "Like",
+  "/delete/(\d+)", "Delete",
   "/materials", "Materials",
-  "/materials/(\d+)", "Material"
+  "/materials/(\d+)", "Material",
+  "/timezone", "SetTimezone"
 )
 
 UPLOAD_DIR = os.path.join(".", "uploads")
@@ -62,7 +64,12 @@ db = models.DatabaseHandler()
 
 # Every user will have a unique session object:
 if web.config.get('_session') is None:
-    session = web.session.Session(app, store, initializer={"login": 0, "privilege": 0, "user": None, "id": None})
+    session = web.session.Session(app, store, initializer={"login": 0,
+                                                           "privilege": 0,
+                                                           "user": None,
+                                                           "id": None,
+                                                           "timezone": None
+                                                           })
     web.config._session = session
 else:
     session = web.config._session
@@ -75,8 +82,10 @@ class Download():
         """Serves a file."""
         material = db.select("materials", id=int(id))[0]
         path = create_path(id) + "." + material.type
+        if not os.path.exists(path):
+            raise web.notfound()  # TODO!!
         # web.header("Content-Disposition", "attachment; filename=%s" % path.split("\\")[-1])
-        web.header("Content-Type", material.type) # TODO tyyppi!
+        web.header("Content-Type", material.type)  # TODO tyyppi!
         web.header('Transfer-Encoding', 'chunked')
         f = open(path, 'rb')
         while 1:
@@ -113,8 +122,8 @@ class Upload:
         title = web.input().title.strip().capitalize()
         tags = " ".join([tag[:30] for tag in web.input().tags.split(",")[:5]])
         description = web.input().description.strip().capitalize()
-        if len(description) > 100:
-            description = description[:100] + "..."
+        if len(description) > 300:
+            description = description[:300] + "..."
 
         # Create the URL that the user is redirected to if the form is invalid:
         redirect_url = lambda error: ("/add/%d?error=%s&title=%s&description=%s&tags=%s"
@@ -174,11 +183,11 @@ class Upload:
 class Like:
     def GET(self):
         """'Likes' a material, i.e. inreases it's points by one and adds
-        the material's id to user's 'liked' column. Returns 'false' if failed,
-        otherwise an empty string."""
-        id = web.input(id="").id
+        the material's id to user's 'liked' column. Returns current points if
+        succeed, otherwise an empty string."""
+        id = web.input(id=None).id
         if not id or session.privilege < 1:
-            return "false"
+            return ""
 
         user = db.select("users", id=session.id)[0]
         material = db.select("materials", id=int(id))[0]
@@ -186,10 +195,10 @@ class Like:
 
         # Don't like if user has already liked this material or owns the material:
         if points_given and id in points_given.split(" ") or material.user_id == user.id:
-            return "false"
+            return ""
 
-        db.like_material(material_id=int(id), user_id=session.id)
-        return ""
+        points = db.like_material(material_id=int(id), user_id=session.id)
+        return str(points)
 
 
 class Add:
@@ -409,44 +418,106 @@ class Courses:
         return render.courses(courses)
 
 
+class Delete:
+    def GET(self, id):
+        """Deletes a material and its corresponding file."""
+        id = int(id)
+        material = db.select("materials", id=id)[0]
+        filetype = material.type
+        if session.id != material.user_id:
+            return "not your material"  # TODO
+
+        db.delete_material(id)
+        delete_file(create_path(id) + "." + filetype)
+        raise web.seeother("/")
+
+
 class Materials:
     def GET(self):
-        """Returns a piece of html containing a list of materials."""
-        orders = {"new": ["materials.date_added desc", "Uusimmat materiaalit"],
-                  "hot": ["materials.comments desc", "Kuumimmat materiaalit"],
-                  "top": ["materials.points desc", "Parhaat materiaalit"]}
+        """Returns an html snippet containing materials in table rows."""
+        import time
+        time.sleep(1)
+        # Check for CSRF: (XMLHttpRequest doesn't allow you to make an AJAX
+        # request to a third party domain)
+        if web.ctx.env.get("HTTP_X_REQUESTED_WITH") != "XMLHttpRequest":
+            return "possible csrf"  # TODO
 
-        query_order = web.input(order="new").order
-        if not query_order in orders:
-            return "invalid sort"  # TODO
-        order = orders[query_order]
+        sorts = {"NEW": "materials.date_added desc",
+                 "HOT": "materials.comments desc",
+                 "TOP": "materials.points desc"}
+        faculties = ["HUM", "IT", "JSBE", "EDU", "SPORT",
+                     "SCIENCE", "YTK", "KIELI", "MUU"]
 
-        materials = db.get_materials(order_by=order[0], limit=8)
+        query = web.input(query="").query
+        key = web.input(key="").key
+
+        if query:  # TODO query min. length?
+            materials = db.get_materials(search=query, limit=30)
+        elif key:
+            if key in sorts:
+                materials = db.get_materials(order_by=sorts[key], limit=30)
+            elif key in faculties:
+                materials = db.get_materials(faculty=key, limit=30)
+            else:
+                try:
+                    key = int(key)
+                    materials = db.get_materials(user_id=key)
+                except ValueError:
+                    materials = None
+        else:
+            materials = None
+
         render = create_render(session.privilege, base=False)
-        return render.list_all(materials, title=order[1])
+        return render.list_all(materials)
+
+
+class Material:
+    def GET(self, id):
+        """Returns an html snippet containing a material and its comments."""
+        import time
+        time.sleep(1)
+
+        id = int(id)
+
+        if web.ctx.env.get("HTTP_X_REQUESTED_WITH") != "XMLHttpRequest":
+            return "csrf"  # TODO
+
+        material = db.get_materials(id=id)[0]
+        comments = db.get_comments(material_id=id)
+
+        render = create_render(session.privilege, base=False)
+        return render.list_single(material, comments, "otsikko")
+
+    def POST(self, id):
+        """Add a comment to a material. Returns an error message string if
+        fails, otherwise an empty string."""
+        if session.privilege < 1:
+            return "not signed in"  # TODO
+        if web.ctx.env.get("HTTP_X_REQUESTED_WITH") != "XMLHttpRequest":
+            return "possible csrf"  # TODO
+
+        comment = web.input().comment
+
+        if len(comment) > 300:
+            return "Kommentin maksimipituus on 300 merkkiä"
+        db.add_comment(comment, session.id, int(id))
+        return ""
 
 
 class Index:
     def GET(self):
         """Index page with lists of newest and most popular materials."""
-        new_materials = db.get_materials(order_by="materials.date_added desc", limit=8)
-        top_materials = db.get_materials(order_by="materials.points desc", limit=8)
-        hot_materials = db.get_materials(order_by="materials.comments desc", limit=8)
-
         render = create_render(session.privilege)
-        return render.index(new_materials, top_materials, hot_materials)
+        return render.index()
 
 
-class Comments:
-    def GET(self):
-        """Returns a piece of HTML containing info about material and its comments."""
-        id = web.input().id
-        web.header("Content-Type", "text/html")
-
-        globals = {"format_date": format_date, "format_size": format_size}
-        render = web.template.render("templates/user", globals=globals)
-        m = db.get_materials(id=int(id))[0]
-        return render.list_single(m)
+class SetTimezone():
+    def POST(self):
+        """Stores user's timezone offset to the session object."""
+        offset = web.input(offset=None).offset
+        if offset:
+            offset = int(offset) / 60 * -1
+        session.timezone = offset
 
 
 class Logout:
@@ -495,7 +566,10 @@ def delete_file(path):
     False
     >>> delete_file("C:\\System32")
     False"""
-    if re.match(r"^(\\{2}\d{3}){2}\.\w{1,4}$", path, re.IGNORECASE) != None:
+    regex = r"^((\\|/)\d{3}){2}\.\w{1,4}$"
+    if not path.startswith(UPLOAD_DIR):
+        return False
+    if re.match(regex, path[len(UPLOAD_DIR):], re.IGNORECASE) == None:
         return False
     try:
         os.remove(path)
@@ -515,7 +589,11 @@ def urldecode(url):
 def create_render(privilege, base=True):
     """Create a render object based on user's privilege; different privileges
     use different HTML templates."""
-    my_globals = {"session": session, "format_date": format_date, "format_size": format_size}
+    my_globals = {"session": session,
+                  "format_date": format_date,
+                  "format_size": format_size,
+                  "format_time": format_time}
+
     base = "base" if base else None
     if logged():
         if privilege == 0:
@@ -529,14 +607,44 @@ def create_render(privilege, base=True):
     return render
 
 
-def format_date(date):
+### TEMPLATE FUNCTIONS ###
+
+
+def format_date(date_str):
     """Formats a date string from 'YYYY-MM-DD' to 'D.M.YYYY'
 
     >>> format_date("2013-01-01") == "1.1.2013"
     True
     """
-    parts = date.split("-")
+    parts = date_str.split("-")
     return "%d.%d.%s" % (int(parts[2]), int(parts[1]), parts[0])
+
+
+def format_time(time_str):
+    """Formats a datetime string into something more readable.
+
+    >>> minute = datetime.timedelta(0, 60); hour = 60 * minute; day = 24 * hour
+    >>> now = datetime.datetime.now; today = datetime.date.today
+    >>> format = "%Y-%m-%d %H:%M:%S"; session.timezone = None
+    >>> time_str = lambda time: datetime.datetime.strftime(time, format)
+    >>> format_time(time_str(now()))
+    '0 minuuttia sitten'
+    >>> format_time(time_str(now() - 15 * minute))
+    '15 minuuttia sitten'
+    >>> format_time(time_str(now() - 25 * hour))
+    'eilen'
+    """
+    time = datetime.datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+    if session.timezone:
+        time += datetime.timedelta(0, session.timezone * 60 * 60)
+    diff = datetime.datetime.now() - time
+    if diff.days > 1:
+        return format_date(time_str.split(" ")[0])
+    elif diff.days == 1:
+        return "eilen"
+    elif diff.seconds > 60 * 60:
+        return "%d tuntia sitten" % (diff.seconds / (60 * 60))
+    return "%d minuuttia sitten" % (diff.seconds / 60)
 
 
 def format_size(size):

@@ -1,25 +1,16 @@
-$def with (materials, title)
-<!-- NAVBAR -->
-<div class="navbar">
-  <div class="navbar-inner">
-    <a class="brand">$title</a>
-  </div>
-</div>
-<!-- ITEMS -->
-$for m in materials:
-  <div class="listitem $loop.parity" data-id="$m.id">
-    <div class="upper">
-      <span class="label label-info">$m.code</span>
-      <a rel="tooltip" title="$m.description" href="/download/$m.id"> $m.title</a>
-    </div>
-  
-    <div class="lower">
-      <!-- <i class="icon-user"></i> -->
-      <a href="#">$m.name</a> <small>$format_date(m.date_added) - 
-      <a href="#" class="comments">Kommentteja: 12</a> - .$m.type $format_size(m.size)</small>
-      <span class="points pull-right" style="">
-        <span class="badge badge-success pull-right">$m.points</span>
-        <a href=""><i class="icon-plus"></i></a> 
-      </span> 
-    </div><!--/.lower-->        
-  </div><!--/.listitem-->
+$def with (materials)
+$# Renders rows for a table of materials.
+
+$if materials:
+  $for m in materials:
+    <tr data-id="$m.id">
+      <td>$m.code</td>
+      <td>$m.title</td>
+      <td>$m.name</td>
+      <td>$format_date(m.date_added)</td>
+      <td>$m.comments</td>
+      <td>$m.points</td>
+    </tr>
+$else:
+  </tbody></table>
+  Ei hakutuloksia!

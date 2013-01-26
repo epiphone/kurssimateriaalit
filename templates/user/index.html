@@ -1,4 +1,3 @@
-$def with (new_materials, top_materials, hot_materials)
 $var title: Kurssimateriaalit 0.1 - Index
 $var show_login_form: True
 
@@ -8,138 +7,181 @@ $var show_login_form: True
   <div class="hero-unit">
     <h1>Kurssimateriaalit 0.1<small>prototyyppi</small></h1>
     <p>Jaa muistiinpanosi, tiivistelmät, mindmapit, mitkälie. tjsp.</p>
-    <br>
-    <!-- <a href="/materials" class="btn btn-primary btn-large">Lisää &raquo;</a>
-    <a href="/courses" class="btn btn-primary btn-large">Selaa  &raquo;</a>
-    <a href="/add" class="btn btn-primary btn-large">Hae &raquo;</a> -->
-    <div class="row" style="text-align:center;">
-        <a href="/courses" class="btn btn-primary btn-large">Hae materiaaleja <i class="icon-search"></i></a>
-        <a href="/courses" class="btn btn-primary btn-large" style="min-width:140px;">Lisää uusi <i class="icon-plus"></i></a>
-    </div>
   </div>
 
-  
-  <div class="row">
-    <!-- NEW MATERIALS -->
-    <div class="span4">
-      <!-- <div class="well"> -->
-      <div class="navbar">
-        <div class="navbar-inner">
-          <a class="brand">Uusimmat</a>
-        </div>
+  <div class="container">
+    <div class="row">
+      <div class="span9">
+
+        <div class="row">
+      
+          <!-- TABLE OF MATERIALS -->
+          <div class="span5 materials">
+            <table class="tablesorter table-condensed">
+              <thead>
+                <tr>
+                  <th>Kurssi</th>
+                  <th>Otsikko</th>
+                  <th><i class="icon-user"></i></th>
+                  <th><i class="icon-time"></i></th>
+                  <th><i class="icon-comment"></i></th>
+                  <th><i class="icon-thumbs-up"></i></th>
+                </tr>
+              </thead>
+              <tbody>
+                $for i in range(10):
+                  <tr>
+                    $for j in range(6):
+                      <td>&nbsp;</td>
+                  </tr>
+              </tbody>
+            </table>
+            <div class="spinner"></div>
+          </div><!--/.span*-->
+
+          <!-- SELECTED MATERIAL -->     
+          <div class="span4 single-material" style="position:relative;">
+            <div ><-- Valitse listasta</div>
+          </div>
+        </div><!-- /.row -->
+      </div><!-- /.span9 -->
+
+      <!-- RIGHT SIDEBAR -->
+      <div class="span3" style="background-color:#F5F5F5;border-radius:8px;">
+        <ul class="nav nav-list">
+          <form class="form-search" style="margin-top:20px;">
+            <div class="input-append">
+              <input type="text" class="span2 search-query" placeholder="Etsi materiaaleja" autofocus>
+              <button type="submit" class="btn btn-primary"><i class="icon-search"></i></button>
+            </div>
+          </form>
+          <li class="divider"></li>
+          <li class="nav-header">Pikavalinta</li>
+          <li data-key="NEW" class="active"><a href="">Uusimmat</a></li>
+          <li data-key="HOT"><a href="">Kommentoiduimmat</a></li>
+          <li data-key="TOP"><a href="">Parhaat</a></li>
+          <li class="divider"></li>
+          <li class="nav-header">Organisaatio</li>
+          <li data-key="HUM"><a href="">Humanistinen</a></li>
+          <li data-key="IT"><a href="">Informaatioteknologian</a></li>
+          <li data-key="JSBE"><a href="">Kauppakorkeakoulu</a></li>
+          <li data-key="EDU"><a href="">Kasvatustieteiden</a></li>
+          <li data-key="SPORT"><a href="">Liikuntatieteellinen</a></li>
+          <li data-key="SCIENCE"><a href="">Matemaattis-luonnontieteellinen</a></li>
+          <li data-key="YTK"><a href="">Yhteiskuntatieteellinen</a></li>
+          <li data-key="KIELI"><a href="">Kielikeskus</a></li>
+          <li data-key="MUU"><a href="">Muu</a></li>
+          <li class="divider"></li>
+          <div class="sidebar-addnew">
+            <a class="btn btn-large btn-success">Lisää uusi <i class="icon-plus"></i></a>
+          </div>
+        </ul>
       </div>
-      <!-- ITEMS -->
-      $for m in new_materials:
-      <div class="listitem $loop.parity">
-        <div class="upper">
-          <span class="label label-info">$m.code</span>
-          <a rel="tooltip" title="$m.description" href="/download/$m.id"> $m.title</a>
-          <small>.$m.type</small>
-        </div>
-
-        <div class="lower">
-          <!-- <i class="icon-user"></i> -->
-          <a href="#">$m.name</a> <small>$format_date(m.date_added) - 
-          <a href="#" class="comments">Kommentteja: 12</a></small>
-          <span class="points pull-right" style="">
-            <span class="badge badge-success pull-right">$m.points</span>
-            <a href=""><i class="icon-plus"></i></a> 
-          </span> 
-        </div><!--/.lower-->        
-      </div><!--/.material-listitem-->
-    <!-- </div>/.well -->
-    </div><!--/.span*-->
-
-    <!-- HOT MATERIALS -->
-    <div class="span4">
-      <!-- VIEW #1 -->
-      <div class="list">
-        <div class="spinner"></div>  
-      </div>
-    </div><!--/.span*-->
-
-    <!-- TOP MATERIALS -->
-    <div class="span4">
-      <!-- <div class="well"> -->
-      <div class="navbar">
-        <div class="navbar-inner">
-          <a class="brand">Parhaat</a>
-        </div>
-      </div>
-      <!-- ITEMS -->
-      $for m in hot_materials:
-      <div class="listitem $loop.parity">
-        <div class="upper">
-          <span class="label label-info">$m.code</span>
-          <a rel="tooltip" title="$m.description" href="/download/$m.id"> $m.title</a>
-          <!-- <small>.$m.type</small> -->
-        </div>
-
-        <div class="lower">
-          <!-- <i class="icon-user"></i> -->
-          <a href="#">$m.name</a> <small>$format_date(m.date_added) - 
-          <a href="#" class="comments">Kommentteja: 12</a> - .$m.type $format_size(m.size)</small>
-          <span class="points pull-right" style="">
-            <span class="badge badge-success pull-right">$m.points</span>
-            <a href=""><i class="icon-plus"></i></a> 
-          </span> 
-        </div><!--/.lower-->        
-      </div><!--/.material-listitem-->
-    <!-- </div>/.well -->
-    </div><!--/.span*-->
-    
-
-    
-  </div><!--/.row-->
-
+    </div><!--/.row-->
+  </div><!--/.container-->
 </div><!--/.container-->
 
 <script> 
 window.onload = function(){
-    // Enable tooltips on course names:
-    $$("span[rel='tooltip']").tooltip();
-    // Show plus-signs next to points displays when hovering:
-    $$(".lower span a").css("visibility", "hidden");
-    $$(".listitem").hover(function(){
-        $$(this).find(".points>a").css("visibility", "visible");
-    }, function() {
-        $$(this).find(".points>a").css("visibility", "hidden");
-    });
-    // Load materials:
-    $$.fn.load_materials = function(order) {
-        this.children(".spinner").css("display", "block");
-        var param = order == undefined ? "" : "?order=" + order;
-        this.load("materials" + param);
+    $if not session.timezone:
+        var offset = new Date().getTimezoneOffset();
+        $$.post("/timezone", {offset: offset});
+
+    var table = $$(".tablesorter tbody"),
+        selected = $$(".single-material"),
+        table_spinner = $$(".spinner").eq(0);
+
+    // Load a list of materials:
+    function load_table(query, key) {
+        $$(table_spinner).css("display", "block");
+        $$(".nav-list li.active").removeClass("active");
+        $$(table).load("/materials?" + $$.param({query:query, key:key}),
+                  function() {
+                      $$(table_spinner).css("display", "none");
+                      $$(".tablesorter").tablesorter();
+                  }
+        ); 
     };
-    $$(".list").load_materials();
-    // Get a material's comments:
-    $$(".list .listitem").live("click", function(){
-        $$(this).siblings(".spinner").css("display", "block");
+    // Load a single material and its comments:
+    function load_selected(id) {
+        $$(selected).append("<div class='spinner'></div>");
+        $$(selected).load("materials/" + id);
+    };
+
+    // Load initial materials on startup:
+    load_table("", "NEW");
+
+    // Load materials on search form submit:
+    $$(".form-search").submit(function() {
+        var query = $$(this).find("input").val();
+        load_table(query, "");
+        return false;
+    });
+
+    // Load materials when a sidebar link is clicked:
+    $$(".nav-list li[data-key]").click(function() {
+        $$(this).addClass("active");
+        var key = $$(this).attr("data-key");
+        load_table("", key);
+        return false;
+    })
+
+    // Load materials when a username link is clicked:
+    $$(".user-link").live("click", function() {
+        var key = $$(this).attr("data-id");
+        load_table("", key);
+        return false;
+    });
+
+    // Load a material when an appropriate link is clicked:
+    $$(".tablesorter tr").live("click", function(){
+        $$(".tablesorter .selected").removeClass("selected");
+        $$(this).addClass("selected");
         var id = $$(this).attr("data-id");
-        $$(this).parents().eq(0).load("/comments?id=" + id);
+        load_selected(id);
+        return false;
     })
     
-    // Perform Ajax operation when liking a material:
-    $$(".lower span a").click(function () {
+    // Add a comment:
+    $$(".btn-comment").live("click", function(){
         var id = $$(this).attr("data-id"),
+            comment = $$(this).siblings().val(),
+            list = $$(this).parents(".list-materials"),
+            textarea = $$(this).siblings();
+
+        $$.post("/materials/" + id,
+                {comment: comment},
+                function(data) {
+                    if (data == "") {
+                        $$(list).load_material(id);
+                    } else {
+                        alert(data);
+                        $$(textarea).select();
+                    }
+                },
+                "text");
+        return false;
+            
+    });
+
+    // "Like" a material:
+    $$(".lower span a").live("click", function(){
+        var id = $$(this).parents(".listitem").attr("data-id"),
             clicked = this,
-            points_display = $$(clicked).siblings(":first");
-        $$.ajax({
-            type: "GET",
-            url: "/like",
-            data: {id: id},
-            success: function(data) {
-                if (data=="") {
-                    var points = parseInt($$(points_display).text()) + 1;
-                    $$(points_display).text(points);
-                } else {
-                    $$(points_display).removeClass("badge-success").addClass("badge-important");
-                    $$(clicked).remove();
-                }
-            },
-            dataType: "text"
-        });
-    return false;
+            points_display = $$(clicked).siblings()[0];
+        $$.get("/like?id=" + id, function(response){
+            console.log(response);
+            if (response == "") {
+                $$(points_display).removeClass("badge-success");
+                $$(clicked).remove();
+            } else {
+                $$(".list:eq(0)").load_materials("new");
+                $$(".list:eq(1)").load_materials("hot");
+                $$(".list:eq(2)").load_materials("top");
+
+            }
+        }, "text");
+        return false;
     });
 }
 </script>

@@ -22,11 +22,9 @@ class DatabaseHandler:
         """
         if type(tables) == list:
             tables = ",".join(tables)
-        clauses = [] if kws else ""
-        for key in kws:
-            clauses.append("%s=$%s" % (key, key))
-        if kws:
-            clauses = " WHERE " + " AND ".join(clauses)
+
+        clauses = " AND ".join(["%s=$%s" % (key, key) for key in kws])
+        clauses = " WHERE " + clauses if clauses else ""
         if order_by:
             clauses += " ORDER BY %s" % order_by
         if limit:
@@ -35,9 +33,13 @@ class DatabaseHandler:
         kws["limit"] = limit
         return self.db.query(query, kws)
 
-    def delete(self, table, id):
-        """Deletes a row with given id from given table."""
-        self.db.delete(table, vars=locals(), where="id=$id")
+    def delete(self, table, **kws):
+        """Deletes all rows or a given row from a table."""
+        query = "DELETE FROM " + table
+        clauses = " AND ".join(["%s=$%s" % (key, key) for key in kws])
+        if clauses:
+            query = query + " WHERE " + clauses
+        self.db.query(query, kws)
 
     def update(self, table, id, **kws):
         """Updates a row from selected table, kws determines which values are
@@ -48,7 +50,7 @@ class DatabaseHandler:
         >>> user = db.select("users", id=id)[0]
         >>> user.name == "test" and user.points == 10
         True
-        >>> db.delete("users", id)
+        >>> db.delete("users", id=id)
         """
         values = []
         for key in kws:
@@ -68,13 +70,11 @@ class DatabaseHandler:
 
     def get_courses(self, id=None, order_by=None, limit=None):
         """Selects courses and the number of materials they have."""
-        query = """SELECT courses.id, courses.code, courses.title,
-                courses.faculty, (SELECT count(*) FROM materials where
-                 materials.course_id = courses.id) AS materials
-                FROM courses
-                """
+        query = """SELECT id, code, title, faculty,
+                (SELECT count(*) FROM materials WHERE materials.course_id = id)
+                AS materials FROM courses"""
         if id:
-            query += " WHERE courses.id=$id"
+            query += " WHERE id=$id"
         if order_by:
             query += " ORDER BY %s" % order_by
         if limit:
@@ -82,19 +82,20 @@ class DatabaseHandler:
 
         return self.db.query(query, locals())
 
-    def search_courses(self, query_word, code_only=False):
+    def search_courses(self, search, code_only=False):
         """Selects courses whose code or title match the given query."""
-        query_word = "%" + query_word + "%"
-        query = "SELECT * from courses WHERE code LIKE $query_word"
+        search = "%" + search + "%"
+        query = "SELECT * from courses WHERE code LIKE $search"
         if not code_only:
-            query += " OR title LIKE $query_word"
-        return self.db.query(query, {"query_word": query_word})
+            query += " OR title LIKE $search"
+        return self.db.query(query, {"search": search})
 
     ### MATERIALS ###
 
-    def get_materials(self, id=None, course_id=None, user_id=None, order_by=None, limit=None):
-        """Returns either all selected materials or only a selected course's materials.
-        Includes information about the course and the user who own's the material.
+    def get_materials(self, id=None, course_id=None, user_id=None,
+        faculty=None, search=None, order_by=None, limit=None):
+        """Returns all materials that match the given criteria.
+        Includes information about the course and the user who submitted the material.
 
         >>> db = DatabaseHandler();uid = db.insert("users");cid = db.insert("courses");
         >>> mid = db.insert("materials", course_id=cid, user_id=uid)
@@ -102,22 +103,28 @@ class DatabaseHandler:
         True
         >>> db.get_materials(user_id=uid)[0].name == db.select("users",id=uid)[0].name
         True
-        >>> db.delete("materials",mid); db.delete("courses",cid); db.delete("users",uid)
+        >>> db.delete("materials",id=mid); db.delete("courses",id=cid); db.delete("users",id=uid)
         """
-        query = """SELECT materials.id, materials.title, materials.description,
-                materials.tags, materials.points, materials.date_added,
-                materials.course_id, materials.user_id, materials.type,
-                materials.size, courses.code,
-                courses.title AS course_title, courses.faculty, users.name,
-                users.points AS user_points FROM materials,courses,users
-                 WHERE materials.user_id = users.id AND materials.course_id =
-                courses.id"""
-        if id:
-            query += " AND materials.id=$id"
-        if course_id:
-            query += " AND courses.id=$course_id"
-        if user_id:
-            query += " AND users.id=$user_id"
+        args = locals()
+        search = "%" + search + "%" if search else None
+        query = """SELECT materials.*, courses.code, courses.title
+                AS course_title, courses.faculty, users.name, users.points AS
+                user_points FROM materials JOIN courses ON course_id=courses.id
+                JOIN users ON user_id=users.id"""
+
+        dict = {"id": "materials.id=$id",
+                "course_id": "courses.id=$course_id",
+                "user_id": "users.id=$user_id",
+                "faculty": "courses.faculty=$faculty",
+                "search": """courses.code LIKE $search
+                          OR course_title LIKE $search
+                          OR materials.title LIKE $search
+                          OR description LIKE $search
+                          OR tags LIKE $search
+                          OR courses.faculty LIKE $search"""}
+        clauses = " AND ".join([dict[key] for key in dict.keys() if args[key]])
+        query += " WHERE " + clauses if clauses else ""
+
         if order_by:
             query += " ORDER BY %s" % order_by
         if limit:
@@ -125,36 +132,59 @@ class DatabaseHandler:
 
         return self.db.query(query, locals())
 
-    def get_materials_count(self, course_id):
-        """Returns the number of materials a course has."""
-        query = "SELECT count() FROM materials WHERE course_id=$course_id"
-        return self.db.query(query, locals())[0]["count()"]
-
     def like_material(self, material_id, user_id):
         """Increases the points of a material by one, adds material's id to
         user's "points_given" column, so that it won't get liked twice by
-        the same user.
+        the same user. Returns the material's points after the increase.
 
         >>> db = DatabaseHandler(); uid = db.insert("users");
         >>> mid = db.insert("materials")
         >>> db.like_material(mid, uid)
+        1
         >>> db.select("materials", id=mid)[0].points
         1
         >>> db.select("users", id=uid)[0].points_given.split(" ")[0] == str(mid)
         True
         >>> db.delete("materials", id=mid); db.delete("users", id=uid)
         """
+        # Update material's points:
         pts = self.select("materials", id=material_id)[0].points
         pts += 1
         self.update("materials", material_id, points=pts)
+        # Update user:
         pts_given = self.select("users", id=user_id)[0].points_given
         pts_given = pts_given + " " + str(material_id) if pts_given else str(material_id)
         self.update("users", user_id, points_given=pts_given)
+        return pts
+
+    def delete_material(self, id):
+        """Deletes a material and its comments from database, reduces
+        owner's points accordingly."""
+        self.delete("comments", material_id=id)
+        material = self.select("materials", id=id)[0]
+        points, user_id = material.points, material.user_id
+        user_points = self.select("users", id=user_id)[0].points
+        self.update("users", id=user_id, points=(user_points - points))
+        self.delete("materials", id=id)
 
     ### COMMENTS ###
 
+    def add_comment(self, content, user_id, material_id):
+        """Add a comment, increase the material's amount of comments by one."""
+        self.insert("comments", content=content, user_id=user_id,
+            material_id=material_id)
+        comments = self.select("materials", id=material_id)[0].comments + 1
+        self.update("materials", material_id, comments=comments)
+        return comments
+
     def get_comments(self, material_id):
-        return self.db.select("comments", locals(), where="material_id=$material_id", order="date_added")
+        """Returns a given material's comments."""
+        query = """SELECT id, content, user_id, material_id, date_added,
+                (SELECT name FROM users WHERE users.id = user_id) AS name
+                FROM comments WHERE material_id = $material_id
+                ORDER BY date_added LIMIT 100
+                """
+        return self.db.query(query, locals())
 
     ### INIT ###
 
