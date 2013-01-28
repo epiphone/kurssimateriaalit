@@ -71,7 +71,8 @@ class DatabaseHandler:
     def get_courses(self, id=None, order_by=None, limit=None):
         """Selects courses and the number of materials they have."""
         query = """SELECT id, code, title, faculty,
-                (SELECT count(*) FROM materials WHERE materials.course_id = id)
+                (SELECT count(*) FROM materials
+                WHERE materials.course_id=courses.id)
                 AS materials FROM courses"""
         if id:
             query += " WHERE id=$id"
@@ -129,7 +130,6 @@ class DatabaseHandler:
             query += " ORDER BY %s" % order_by
         if limit:
             query += " LIMIT $limit"
-
         return self.db.query(query, locals())
 
     def like_material(self, material_id, user_id):

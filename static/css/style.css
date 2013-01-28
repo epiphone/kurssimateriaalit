@@ -8,6 +8,40 @@ a:hover i {
     background-image: url("../img/glyphicons-halflings-white.png");
 }
 
+.spinner {
+    display:block;
+    position: absolute;
+    z-index: 1000;
+    height:     100%;
+    width:      100%;
+    left:0;
+    top:0;
+    background: rgba(255, 255, 255, .8) 
+                url("../img/spinner.gif") 
+                50% 50% 
+                no-repeat;
+}
+
+/* ### INDEX HEADER ### */
+
+.hero-unit {
+    padding: 0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.hero-unit .title {
+    padding: 60px;
+    float: left;
+}
+
+.hero-unit .tagcloud {
+    overflow: hidden;
+    width: 300px;
+    height: 200px;
+    margin: 20px auto;
+}
+
 /* ### NAVBAR ### */
 
 .navbar-form input,
@@ -32,12 +66,6 @@ a:hover i {
 
 .navbar .brand.active {
     color: #fff;
-}
-
-/* ### INDEX HEADER ### */
-
-.hero-unit {
-    padding-bottom: 15px;
 }
 
 /* ### REGISTER & LOGIN FORMS */
@@ -66,143 +94,64 @@ a:hover i {
     padding: 7px 9px;
 }
 
-.form .help-block,
-.form .help-inline {
-    font-size: 10px;
-    margin-top: -10px;
-}
 
-/* ### INDEX LISTS ### */
+/* ### SELECTED MATERIAL  ### */
 
-.listitem {
-    min-height: 48px;
-    padding: 2px;
-    padding-bottom: 4px;
-    margin-bottom:4px;
-    /*background-color: #FEFCFA;*/
-    /*background-color: #DCDCDC;*/
-    border-radius: 4px 4px 4px 4px;
+.selected-material {
     position: relative;
 }
 
-.listitem.odd, .listitem.description {
-    /*background-color: #b5c9c6;*/
-    /*background-color: #f7f7f7;*/
-    background-color: #DCDCDC;
-    
-}
-
-.listitem .lower {
-    margin-top: 10px;
-    font-size: 11px;
-}
-
-.listitem .lower .comments {
-    color: green;
-}
-
-.list {
-    position: relative;
-    height:     100%;
-    width:      100%;
-    left:0;
-    top:0;
-}
-
-.materials {
-    position: relative;
-    overflow-y: auto;
-    max-height: 800px;
-}
-
-.list-comments .filler {
-    min-height: 500px;
-    background-color: #F7F7F7;
+.selected-material .material-info {
+    border: 1px solid #D9EDF7;
     border-radius: 8px;
+    padding: 8px;
 }
 
-.listitem .lower .points {
-    position: absolute;
-    bottom: 0px;
-    right: 0px;
-}
-
-.listitem .lower .points a {
-    visibility: hidden;
-}
-
-.listitem .lower .badge {
-    margin-top: 3px;
-}
-
-
-.spinner {
-    display:block;
-    position: absolute;
-    z-index: 1000;
-    height:     100%;
-    width:      100%;
-    left:0;
-    top:0;
-    background: rgba( 255, 255, 255, .8 ) 
-                url('http://i.stack.imgur.com/FhHRx.gif') 
-                50% 50% 
-                no-repeat;
-}
-
-.listitem.single {
-    overflow: hidden;
-    background-color:;
-}
-
-.listitem.single .lower .points {
-    bottom: 3px;
-    right: 2px;
-}
-
-.btn-back {
-    float: left;
-    min-height: 46px;
-    margin-right: 4px;
-}
-
-.btn-back i {
-    margin-top: 14px;
-}
-
-.description {
-    background-color: #EEEEEE;
-    padding: 12px;
-}
-
-.description div {
+.selected-material .material-info,
+.selected-material .material-tags {
     text-align: center;
-    margin: 8px;
-}
-
-.comments {
-    padding: 6px;
-    border-radius: 4px;
-}
-
-.comments hr {
-    margin: 10px 0;
-}
-
-.commentitem {
-    min-height:32px;
-    border-radius: 4px;
-    background-color: #FFFFFF;
-    right: 0;
-    padding: 2px;
-    padding-bottom: 8px;
-    margin-left: 5px;
-    margin-top: 5px;
-}
-
-.author {
     font-size: 11px;
+}
+
+.selected-material .material-info .upper {
+    font-size: 16px;
     margin-bottom: 2px;
+}
+
+.selected-material .material-tags a {
+    color: #800000;
+}
+
+.selected-material blockquote {
+    font-size: 12px;
+    text-align: left;
+}
+
+.selected-material .material-buttons {
+    background-color: #D9EDF7;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    padding: 24px 0 4px;
+    text-align: center;
+}
+
+.selected-material .material-comments {
+    margin-top: 20px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.selected-material .material-comments hr {
+    margin: 20px 0 8px;
+}
+
+.selected-material .material-comments .author {
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.selected-material .material-comments p {
+    word-wrap: break-word;
 }
 
 .comment-form form textarea {
@@ -213,7 +162,11 @@ a:hover i {
     resize: none;
 }
 
-/* TABLE */
+/* ### TABLE ### */
+
+.materials {
+    position: relative;
+}
 
 table.tablesorter {
     text-align: left;

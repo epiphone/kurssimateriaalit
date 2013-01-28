@@ -3,7 +3,7 @@ $# Renders rows for a table of materials.
 
 $if materials:
   $for m in materials:
-    <tr data-id="$m.id">
+    <tr data-id="$m.id" title="$m.description">
       <td>$m.code</td>
       <td>$m.title</td>
       <td>$m.name</td>
@@ -12,5 +12,5 @@ $if materials:
       <td>$m.points</td>
     </tr>
 $else:
-  </tbody></table>
+  $#</tbody></table>
   Ei hakutuloksia!

@@ -12,6 +12,7 @@ import sys
 import zipfile
 import datetime
 import urllib2
+import json
 
 ### INITIALIZATION ###
 
@@ -19,8 +20,7 @@ urls = (
   "/", "Index",
   "/login", "Login",
   "/logout", "Logout",
-  "/courses", "Courses",
-  "/courses/(\d+)", "Course",
+  "/courses", "Courses",           # Load courses for the index course cloud
   "/register", "Register",
   "/confirm", "SendConfirmation",
   "/confirm/(.*)", "Confirm",
@@ -35,7 +35,7 @@ urls = (
 )
 
 UPLOAD_DIR = os.path.join(".", "uploads")
-# These files are allowed (contents of zipped files will be checked too):
+# These files are allowed (contents of zipped files will be checked):
 ALLOWED_FILETYPES = ["jpg", "jpeg", "png", "gif", "bmp", "zip", "pdf", "mpg",
                      "doc", "docx", "xls", "csv", "txt", "rtf", "html", "htm",
                      "xlsx", "ppt", "pptx", "odt", "mp3", "m4a", "ogg", "wav",
@@ -46,6 +46,7 @@ web.config.smtp_server = "smtp.gmail.com"
 web.config.smtp_port = 587
 web.config.smtp_username = "kurssimateriaalit@gmail.com"
 web.config.smtp_starttls = True
+
 # Read Gmail account password from a separate file:
 try:
     f = open("gmailpassword.txt", "r")
@@ -54,8 +55,7 @@ try:
 except IOError:
     sys.exit("You need a 'gmailpassword.txt' file with a password for the mail account")
 
-
-# Maximum upload file size:
+# Maximum file upload size:
 cgi.maxlen = 10 * 1024 * 1024
 
 store = web.session.DiskStore("sessions")
@@ -63,13 +63,10 @@ app = web.application(urls, globals())
 db = models.DatabaseHandler()
 
 # Every user will have a unique session object:
-if web.config.get('_session') is None:
-    session = web.session.Session(app, store, initializer={"login": 0,
-                                                           "privilege": 0,
-                                                           "user": None,
-                                                           "id": None,
-                                                           "timezone": None
-                                                           })
+if web.config.get("_session") is None:
+    initializer = {"login": 0, "privilege": 0, "user": None,
+                   "id": None, "timezone": None}
+    session = web.session.Session(app, store, initializer)
     web.config._session = session
 else:
     session = web.config._session
@@ -138,9 +135,8 @@ class Upload:
 
         # Create a path from id, eg. 11 becomes ".\\uploads\\000\\011"
         path = create_path(material_id)
-        folder = path.split("\\")[0]
-        if not os.path.exists(os.path.join(UPLOAD_DIR, folder)):
-            os.makedirs(os.path.join(UPLOAD_DIR, folder))
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
 
         try:
             x = web.input(myfile={})
@@ -396,26 +392,18 @@ class Login:
             return e  # TODO 404 page
 
 
-class Course:
-    def GET(self, id):
-        id = int(id)
-        try:
-            course = db.select("courses", id=id)[0]
-        except IndexError:
-            raise web.seeother("/")
-
-        materials = db.get_materials(course_id=id)
-
-        render = create_render(session.privilege)
-        return render.course(course, materials)
-
-
 class Courses:
     def GET(self):
-        courses = db.get_courses()
+        """Returns JSON that contains the ids and codes of the most popular
+        courses, plus the amount of materials each one has."""
+        courses = db.get_courses(order_by="materials desc",
+            limit=10)
+        obj = []
+        for c in courses:
+            obj.append({"id": c.id, "code": c.code, "materials": c.materials})
 
-        render = create_render(session.privilege)
-        return render.courses(courses)
+        web.header("Content-Type", "application/json")
+        return json.dumps(obj)
 
 
 class Delete:
@@ -450,6 +438,8 @@ class Materials:
 
         query = web.input(query="").query
         key = web.input(key="").key
+        user_id = web.input(user_id="").user_id
+        course_id = web.input(course_id="").course_id
 
         if query:  # TODO query min. length?
             materials = db.get_materials(search=query, limit=30)
@@ -458,12 +448,10 @@ class Materials:
                 materials = db.get_materials(order_by=sorts[key], limit=30)
             elif key in faculties:
                 materials = db.get_materials(faculty=key, limit=30)
-            else:
-                try:
-                    key = int(key)
-                    materials = db.get_materials(user_id=key)
-                except ValueError:
-                    materials = None
+        elif user_id:
+            materials = db.get_materials(user_id=user_id, limit=30)
+        elif course_id:
+            materials = db.get_materials(course_id=course_id, limit=30)
         else:
             materials = None
 
@@ -486,7 +474,7 @@ class Material:
         comments = db.get_comments(material_id=id)
 
         render = create_render(session.privilege, base=False)
-        return render.list_single(material, comments, "otsikko")
+        return render.list_single(material, comments)
 
     def POST(self, id):
         """Add a comment to a material. Returns an error message string if
