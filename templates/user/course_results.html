@@ -1,0 +1,43 @@
+$def with (courses)
+$# A html snippet containing a table of course search results and a form
+$# for adding a new course.
+
+$if not courses:
+  <div class="alert alert-error">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+    <strong>Ei hakutuloksia!</strong>
+  </div>
+$else:
+  <p>Hakutuloksia: $len(courses)</p>
+  <table class="table table-hover">
+    $for c in courses:
+      <tr>
+        <td><strong>$c.code</strong></td>
+        <td>$c.title</td>
+        <td><a class="btn btn-primary" href="add/$c.id">Valitse &raquo;</a></td>
+      </tr>
+  </table>
+
+<hr>
+<form class="form-inline form-course">
+  <h2>Eikö löytynyt? <small>Kokeile eri hakusanaa tai lisää uusi kurssi:</small></h2>
+  <div class="alert alert-error nonvisible" id="course-error">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+    <div></div>
+  </div>
+  <input type="text" name="code" class="input-medium" placeholder="Kurssikoodi" required pattern="^[a-zA-Z0-9]{5}\d{2}$$">
+  <input type="text" name="title" class="input-large" placeholder="Kurssin nimi" required pattern="^.{1,50}$$">
+  <select class="input-medium" name="faculty">
+    <option value=""><small>--Organisaatio--</small></option>
+    <option value="HUM">Humanistinen</option>
+    <option value="IT">Informaatioteknologian</option>
+    <option value="JSBE">Kauppakorkeakoulu</option>
+    <option value="EDU">Kasvatustieteiden</option>
+    <option value="SPORT">Liikuntatieteellinen</option>
+    <option value="SCIENCE">Matemaattis-luonnontieteellinen</option>
+    <option value="YTK">Yhteiskuntatieteellinen</option>
+    <option value="KIELI">Kielikeskus</option>
+    <option value="MUU">Muu</option>
+  </select>
+  <button type="submit" class="btn btn-primary">Lisää kurssi &raquo;</button>
+</form>

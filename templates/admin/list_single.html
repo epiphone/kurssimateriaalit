@@ -31,8 +31,7 @@ $# Renders a single material and its comments.
   <div>
     <a class="btn btn-like" data-id="$material.id">Tykkää <i class="icon-thumbs-up"></i></a>
     <a href="/download/$material.id" class="btn">Lataa <i class="icon-file"></i></a>
-    $if material.user_id == session.id:
-      <a href="/delete/$material.id" class="btn btn-danger">Poista <i class="icon-remove"></i></a>
+    <a href="/delete/$material.id" class="btn btn-danger">Poista <i class="icon-remove"></i></a>
     <p class="muted"><small>.$material.type $format_size(material.size)</small></p>
   </div>
 </div>

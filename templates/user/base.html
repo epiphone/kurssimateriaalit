@@ -26,35 +26,13 @@ $def with (content)
           <a class="brand active" href="/">Kurssimateriaalit 0.1</a>
         $else:
           <a class="brand" href="/">Kurssimateriaalit 0.1</a>
-
-        $if session.login:
-          $if session.privilege == 0:
-            <form class="navbar-form pull-right" action="/logout" method="POST">
-              <button type="submit" class="btn btn-danger">Kirjaudu ulos</button>
-            </form>
-            <form class="navbar-form pull-right" action="/confirm" method="GET">
-              <button id="logout-button" type="submit" class="btn btn-success">Vahvista käyttäjätili</button>
-            </form>
-            <p class="navbar-text pull-right"><a href="/confirm">Käyttäjätiliä ei ole vahvistettu!</a></p>
-          $else:
-            <form class="navbar-form pull-right" action="/logout" method="POST">
-              <button type="submit" class="btn btn-danger">Kirjaudu ulos</button>
-            </form>
-            <p class="navbar-text pull-right">Kirjautunut käyttäjänä <a href="#profile"><b>$session.user</b></a></p>
-              
-        $elif content.show_login_form == "True":
-          <form class="navbar-form pull-right" action="/login" method="POST">
-            <input class="span2" type="text" name="username" placeholder="Käyttäjänimi">
-            <input class="span2" type="password" name="password" placeholder="Salasana">
-            <button type="submit" class="btn btn-primary">Log in</button>
-          </form>
-          <p class="navbar-text pull-right"><a href="/register">Rekisteröidy</a></p>
-                
+        <a href="/logout" class="btn btn-danger pull-right">Kirjaudu ulos</a>
+        <p class="navbar-text pull-right">Kirjautunut käyttäjänä <a href="" class="user-link" data-id="$session.id"><b>$session.user</b></a></p>        
       </div> <!--/.container-->
     </div> <!--/.navbar-inner-->
   </div> <!--/.navbar-->
 
-    $:content
+  $:content
 
 </body>
 </html>

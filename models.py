@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
-# Database initialization and helper functions.
-# Aleksi Pekkala 18.1.2013
+"""Database initialization and helper functions."""
+__author__ = "Aleksi Pekkala"
 
 import web
 import sqlite3
@@ -120,7 +120,6 @@ class DatabaseHandler:
                 "search": """courses.code LIKE $search
                           OR course_title LIKE $search
                           OR materials.title LIKE $search
-                          OR description LIKE $search
                           OR tags LIKE $search
                           OR courses.faculty LIKE $search"""}
         clauses = " AND ".join([dict[key] for key in dict.keys() if args[key]])
@@ -134,27 +133,30 @@ class DatabaseHandler:
 
     def like_material(self, material_id, user_id):
         """Increases the points of a material by one, adds material's id to
-        user's "points_given" column, so that it won't get liked twice by
+        user's "liked" column, so that it won't get liked twice by
         the same user. Returns the material's points after the increase.
 
         >>> db = DatabaseHandler(); uid = db.insert("users");
-        >>> mid = db.insert("materials")
+        >>> mid = db.insert("materials", user_id=uid)
         >>> db.like_material(mid, uid)
         1
         >>> db.select("materials", id=mid)[0].points
         1
-        >>> db.select("users", id=uid)[0].points_given.split(" ")[0] == str(mid)
+        >>> db.select("users", id=uid)[0].liked.split(" ")[0] == str(mid)
         True
         >>> db.delete("materials", id=mid); db.delete("users", id=uid)
         """
         # Update material's points:
-        pts = self.select("materials", id=material_id)[0].points
-        pts += 1
-        self.update("materials", material_id, points=pts)
-        # Update user:
-        pts_given = self.select("users", id=user_id)[0].points_given
-        pts_given = pts_given + " " + str(material_id) if pts_given else str(material_id)
-        self.update("users", user_id, points_given=pts_given)
+        material = self.select("materials", id=material_id)[0]
+        pts = material.points + 1
+        self.update("materials", id=material_id, points=pts)
+        # Update material's owner's points:
+        owner_pts = self.select("users", id=material.user_id)[0].points + 1
+        self.update("users", id=material.user_id, points=owner_pts)
+        # Update the user who liked the material:
+        liked = self.select("users", id=user_id)[0].liked
+        liked = liked + " " + str(material_id) if liked else str(material_id)
+        self.update("users", id=user_id, liked=liked)
         return pts
 
     def delete_material(self, id):
@@ -204,7 +206,7 @@ class DatabaseHandler:
                     date_joined  TEXT DEFAULT CURRENT_DATE,
                     last_login   TEXT DEFAULT CURRENT_DATE,
                     points       INTEGER DEFAULT 0,
-                    points_given TEXT
+                    liked        TEXT
                 );
                 CREATE TABLE IF NOT EXISTS courses(
                     id           INTEGER PRIMARY KEY,
@@ -241,7 +243,6 @@ class DatabaseHandler:
             sys.exit()
 
         self.db = web.database(dbn="sqlite", db="kurssit.db")
-        # self.db.ctx.db.text_factory = str
         self.insert = self.db.insert
 
 if __name__ == "__main__":

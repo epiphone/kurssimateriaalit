@@ -1,7 +1,6 @@
 $def with (error, email_sent)
 $var title: Kurssimateriaalit 0.1 - Lähetä vahvistus
 $var show_login_form: False
-$# A page for submitting an email address for user activation.
 
 
 <div class="container">
@@ -12,7 +11,6 @@ $# A page for submitting an email address for user activation.
     </form>
   $else:
     <form class="form-signin" action="/confirm" method="POST">
-      <input type="hidden" name="csrf_token" value="$csrf_token()"/>
       <legend><h2 class="form-signin-heading">Lähetä aktivointisähköposti</h2></legend>
       <p>Sähköpostia käytetään vain aktivoimiseen - sitä ei tallenneta</p>
       <input type="email" name="email" class="input-block-level" placeholder="Sähköpostiosoite" required>

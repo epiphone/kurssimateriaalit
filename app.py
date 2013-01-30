@@ -1,4 +1,6 @@
 # -*- encoding: utf-8 -*-
+"""A web app for sharing course materials, such as notes."""
+__author__ = "Aleksi Pekkala"
 
 import os
 import web
@@ -11,31 +13,31 @@ import cgi
 import sys
 import zipfile
 import datetime
-import urllib2
 import json
+import mimetypes
 
 ### INITIALIZATION ###
 
-urls = (
-  "/", "Index",
-  "/login", "Login",
-  "/logout", "Logout",
-  "/courses", "Courses",           # Load courses for the index course cloud
-  "/register", "Register",
-  "/confirm", "SendConfirmation",
-  "/confirm/(.*)", "Confirm",
-  "/add", "Add",
-  "/add/(\d+)", "Upload",
-  "/download/(\d+)", "Download",
-  "/like", "Like",
-  "/delete/(\d+)", "Delete",
-  "/materials", "Materials",
-  "/materials/(\d+)", "Material",
-  "/timezone", "SetTimezone"
+urls = (                           # GET/POST
+  "/", "Index",                    # Index/-
+  "/login", "Login",               # Login/-
+  "/logout", "Logout",             # Logout/-
+  "/courses", "Courses",           # Results of a course search./-
+  "/coursesJSON", "CoursesJSON",   # Top 10 courses in JSON/-
+  "/register", "Register",         # Login and register form/Registration
+  "/confirm", "SendConfirmation",  # Form for email address/Send conf. email
+  "/confirm/(.*)", "Confirm",      # Page for confirming activation/Activation
+  "/add", "Add",                   # Form for courses/Add a course
+  "/add/(\d+)", "Upload",          # Form for materials/Upload a material
+  "/download/(\d+)", "Download",   # Serving a file/-
+  "/like", "Like",                 # Liking a material/-
+  "/delete/(\d+)", "Delete",       # Deleting a material/-
+  "/materials", "Materials",       # Multiple materials/-
+  "/materials/(\d+)", "Material",  # A material with comments/Add a comment
+  "/timezone", "SetTimezone"       # -/Set user timezone
 )
 
 UPLOAD_DIR = os.path.join(".", "uploads")
-# These files are allowed (contents of zipped files will be checked):
 ALLOWED_FILETYPES = ["jpg", "jpeg", "png", "gif", "bmp", "zip", "pdf", "mpg",
                      "doc", "docx", "xls", "csv", "txt", "rtf", "html", "htm",
                      "xlsx", "ppt", "pptx", "odt", "mp3", "m4a", "ogg", "wav",
@@ -70,451 +72,6 @@ if web.config.get("_session") is None:
     web.config._session = session
 else:
     session = web.config._session
-
-
-### PAGES ###
-
-class Download():
-    def GET(self, id):
-        """Serves a file."""
-        material = db.select("materials", id=int(id))[0]
-        path = create_path(id) + "." + material.type
-        if not os.path.exists(path):
-            raise web.notfound()  # TODO!!
-        # web.header("Content-Disposition", "attachment; filename=%s" % path.split("\\")[-1])
-        web.header("Content-Type", material.type)  # TODO tyyppi!
-        web.header('Transfer-Encoding', 'chunked')
-        f = open(path, 'rb')
-        while 1:
-            buf = f.read(1024 * 2)
-            if not buf:
-                f.close()
-                break
-            yield buf
-
-
-class Upload:
-    def GET(self, id):
-        """Renders a form for adding a new material."""
-        try:
-            course = db.select("courses", id=id)[0]
-        except:
-            return "404"  # TODO
-        error = web.input(error="").error
-        title = web.input(title="Materiaalin nimi").title
-        description = web.input(description="").description
-        tags = web.input(tags="").tags
-
-        for param in [title, description, tags]:
-            param = urldecode(param)
-
-        render = create_render(session.privilege)
-        return render.upload(id=id, code=course.code, course_title=course.title,
-            error=error, material_title=title, description=description, tags=tags)
-
-    def POST(self, id):
-        """Validates material submission form, adds a new material entry and
-        uploads the corresponding file."""
-        course_id = int(id)
-        title = web.input().title.strip().capitalize()
-        tags = " ".join([tag[:30] for tag in web.input().tags.split(",")[:5]])
-        description = web.input().description.strip().capitalize()
-        if len(description) > 300:
-            description = description[:300] + "..."
-
-        # Create the URL that the user is redirected to if the form is invalid:
-        redirect_url = lambda error: ("/add/%d?error=%s&title=%s&description=%s&tags=%s"
-            % (course_id, error, urlencode(title), urlencode(description), urlencode(tags)))
-
-        if re.match(r"^.{4,40}$", title) == None:  # TODO parempi regex?
-            raise web.seeother(redirect_url("bad_title"))
-
-        # Insert material to database, use row id to generate file path:
-        material_id = db.insert("materials", title=title, description=description,
-            tags=tags, course_id=course_id, user_id=session.id)
-
-        # Create a path from id, eg. 11 becomes ".\\uploads\\000\\011"
-        path = create_path(material_id)
-        if not os.path.exists(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path))
-
-        try:
-            x = web.input(myfile={})
-            if "myfile" in x:
-                file_to_upload = x["myfile"]
-                filepath = file_to_upload.filename.replace("\\", "/")
-                filename = filepath.split("/")[-1]
-                filetype = filename.split(".")[-1]
-                path += "." + filetype
-
-                # Check for illegal file types:
-                if not filetype in ALLOWED_FILETYPES or filetype == filename:
-                    db.delete("materials", material_id)
-                    raise web.seeother(redirect_url("bad_filetype"))
-
-                # Upload file:
-                fout = open(path, "wb")
-                fout.write(file_to_upload.file.read())
-                fout.close()
-
-                # If file is zipped, check contents:
-                if filetype == "zip" and not is_valid_zip(path):
-                    db.delete("materials", material_id)
-                    delete_file(path)
-                    raise web.seeother(redirect_url("bad_zip"))
-
-                # Update file size and type to database:
-                size = os.path.getsize(path) / 1024
-                db.update("materials", material_id, type=filetype, size=size)
-            else:
-                db.delete("materials", material_id)
-                return "upload epäonnistui; ei löydetty tiedostoa?"  # TODO
-            raise web.seeother("/")
-        except ValueError:  # File is too large.
-            db.delete("materials", material_id)
-            delete_file(path)
-            raise web.seeother(redirect_url("bad_filesize"))
-
-
-class Like:
-    def GET(self):
-        """'Likes' a material, i.e. inreases it's points by one and adds
-        the material's id to user's 'liked' column. Returns current points if
-        succeed, otherwise an empty string."""
-        id = web.input(id=None).id
-        if not id or session.privilege < 1:
-            return ""
-
-        user = db.select("users", id=session.id)[0]
-        material = db.select("materials", id=int(id))[0]
-        points_given = db.select("users", id=session.id)[0].points_given
-
-        # Don't like if user has already liked this material or owns the material:
-        if points_given and id in points_given.split(" ") or material.user_id == user.id:
-            return ""
-
-        points = db.like_material(material_id=int(id), user_id=session.id)
-        return str(points)
-
-
-class Add:
-    def GET(self):
-        """Renders a page where user can pick a course to add materials to."""
-        if session.privilege == 0:
-            raise web.seeother("/register")  # TODO lisää virheilmoitus
-
-        render = create_render(session.privilege)
-        query = web.input(query=None).query
-        error = web.input(error=None).error
-
-        if not query:
-            # Render a search form without results:
-            return render.add(courses=False, previous_query="itka123", error=error)
-
-        courses = db.search_courses(query).list()
-        # Render a search form with possible results:
-        return render.add(courses=courses, previous_query=query, error=error)
-
-    def POST(self):
-        """Adds a new course, redirects to page where user can add material
-        related to this course. Notifies user if given information is
-        invalid or the course already exists."""
-        code = web.input().code.strip().upper()
-        title = web.input().title.strip().capitalize()
-        faculty = web.input().faculty
-
-        # First check for empty fields:
-        if "" in [code, title]:
-            raise web.seeother("/add?error=empty_fields")
-
-        # Then check if a course with a same code already exists:
-        if db.search_courses(code, code_only=True).list():
-            raise web.seeother("/add?query=%s&error=course_exists" % code)
-
-        # Finally check that submitted forms are valid:
-        if re.match(r"^[A-Z0-9]{5}\d{2}$", code) == None:
-            raise web.seeother("add?error=bad_code")
-        title = re.sub(" +", " ", title)  # Remove multiple spaces from title.
-        if re.match(r"^.{1,50}$", title) == None:  # TODO parempi regex?
-            raise web.seeother("/add?error=bad_title")
-        if not faculty in ["HUM", "IT", "JSBE", "EDU", "SPORT",
-                           "SCIENCE", "YTK", "KIELI", "MUU"]:
-            raise web.seeother("/add?error=bad_faculty")
-
-        # Information is valid, add course to database:
-        id = db.insert("courses", code=code, title=title, faculty=faculty)
-        # Redirect to material submission page:
-        raise web.seeother("/add/" + str(id))
-
-
-class Confirm:
-    def GET(self, conf_code):
-        """Renders a page with a button for account verification
-        and another for account deletion."""
-        try:
-            user = db.select("users", conf_code=conf_code)[0]
-        except IndexError:
-            return "404"  # TODO
-
-        # Log in:
-        session.login = 1
-        session.privilege = user.privilege
-        session.user = user.name
-        session.id = user.id
-
-        activated = web.input(activated=None).activated
-        render = create_render(session.privilege)
-        return render.confirm(activated)
-
-    def POST(self, conf_code):
-        try:
-            db.update("users", session.id, privilege=1)
-        except Exception, e:
-            return e  # TODO!!
-        path = web.ctx.env.get("HTTP_REFERER", "/")
-        if path != "/":
-            path += "?activated=1"
-        raise web.seeother(path)
-
-
-class SendConfirmation:
-    def GET(self):
-        """Renders a form for user's email."""
-        user = db.select("users", id=session.id).list()
-        if not user:
-            return "404"  # TODO
-        error = web.input(error=None).error
-        email_sent = web.input(email_sent=None).email_sent
-        render = create_render(session.privilege)
-        return render.send_confirm_email(error, email_sent)
-
-    def POST(self):
-        """Sends confirmation email to given address."""
-        email = web.input(email="").email
-        try:
-            user = db.select("users", id=session.id)[0]
-        except IndexError:
-            return "Käyttäjää ei löytynyt"  # TODO
-
-        email_re = r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$"
-        if re.match(email_re, email, re.IGNORECASE) == None:  # Invalid email.
-            raise web.seeother("/confirm?error=bad_email")
-
-        conf_code = user.conf_code
-        conf_url = "http://%s:8080/confirm/%s" % (socket.gethostbyname(socket.gethostname()), str(conf_code))  # TODO
-        subject = "Kurssimateriaalit - Aktivoi käyttäjätilisi"
-        message = u"""Aktivoi käyttäjätilisi '%s' osoitteessa %s
-
-                  Spämmiä? Ei hätää; käyttäjätilin poistaminen onnistuu saman
-                  osoitteen kautta""" % (user.name, conf_url)
-
-        try:
-            web.sendmail(web.config.smtp_username, email, subject, message)
-        except:
-            return "Sähköpostin lähetys epäonnistui"  # TODO
-        web.seeother("/confirm?email_sent=1")
-
-
-class Register:
-    def GET(self):
-        """Renders a login/register form."""
-        error = web.input(error=None).error
-        username = web.input(username="").username
-
-        render = create_render(session.privilege)
-        return render.register(error, username)
-
-    def POST(self):
-        """Validates registration form, adds a new user and redirects."""
-        i = web.input(username=None, password1=None, password2=None)
-        name, passwd1, passwd2 = i["username"], i["password1"], i["password2"]
-
-        username_re = r"[A-ZÅÄÖ0-9]{4,20}"
-        password_re = r"^(?=.*\d)(?=.*[a-zåäö])(?=.*[A-ZÅÄÖ])[0-9a-zöäåA-ZÅÄÖ!@#%]{8,80}$"
-
-        validators = [
-            ((lambda n, p1, p2: not n or not p1 or not p2), "empty_reg_fields"),
-            ((lambda n, p1, p2: p1 != p2), "bad_match"),
-            ((lambda n, p1, p2: re.match(username_re, n, re.IGNORECASE) == None), "bad_reg_username"),
-            ((lambda n, p1, p2: re.match(password_re, p1) == None), "bad_reg_password"),
-            ((lambda n, p1, p2: db.select("users", name=n).list()), "username_taken")
-        ]
-
-        for (f, msg) in validators:
-            if f(name, passwd1, passwd2):
-                raise web.seeother("/register?error=%s&username=%s" % (msg, name))
-
-        # Input validated, add user to database:
-        salt = unicode(uuid.uuid4().hex)
-        hash = unicode(hashlib.sha256(passwd1.encode("utf-8") + salt).hexdigest())
-        conf_code = unicode(hashlib.md5(uuid.uuid4().hex + name.encode("utf-8")).hexdigest())
-        print db.db.ctx.db.text_factory
-        id = db.insert("users", name=name, hash=hash, salt=salt,
-            conf_code=conf_code, privilege=0)
-
-        # Log in:
-        session.login = 1
-        session.privilege = 0
-        session.id = id
-
-        raise web.seeother("/confirm")
-
-
-class Login:
-    def POST(self):
-        """Tries to log in and redirects accordingly."""
-        i = web.input(username="", password="")
-        name, passwd = i["username"], i["password"]
-
-        try:
-            ident = db.select("users", name=name)[0]
-        except IndexError:  # Username not found.
-            return web.seeother("/register?error=bad_login&username=%s" % name)
-
-        try:
-            # Login OK:
-            if hashlib.sha256(passwd.encode("utf-8") + str(ident.salt)).hexdigest() == ident.hash:
-                session.login = 1
-                session.privilege = ident.privilege
-                session.user = ident.name
-                session.id = ident.id
-                # Update user's last login date:
-                date = str(datetime.date.today())
-                db.update("users", ident.id, last_login=date)
-
-                raise web.seeother("/")
-            # Wrong password:
-            else:
-                session.login = 0
-                session.privilege = 0
-                return web.seeother("/register?error=bad_login&username=%s" % name)
-        except Exception, e:
-            return e  # TODO 404 page
-
-
-class Courses:
-    def GET(self):
-        """Returns JSON that contains the ids and codes of the most popular
-        courses, plus the amount of materials each one has."""
-        courses = db.get_courses(order_by="materials desc",
-            limit=10)
-        obj = []
-        for c in courses:
-            obj.append({"id": c.id, "code": c.code, "materials": c.materials})
-
-        web.header("Content-Type", "application/json")
-        return json.dumps(obj)
-
-
-class Delete:
-    def GET(self, id):
-        """Deletes a material and its corresponding file."""
-        id = int(id)
-        material = db.select("materials", id=id)[0]
-        filetype = material.type
-        if session.id != material.user_id:
-            return "not your material"  # TODO
-
-        db.delete_material(id)
-        delete_file(create_path(id) + "." + filetype)
-        raise web.seeother("/")
-
-
-class Materials:
-    def GET(self):
-        """Returns an html snippet containing materials in table rows."""
-        import time
-        time.sleep(1)
-        # Check for CSRF: (XMLHttpRequest doesn't allow you to make an AJAX
-        # request to a third party domain)
-        if web.ctx.env.get("HTTP_X_REQUESTED_WITH") != "XMLHttpRequest":
-            return "possible csrf"  # TODO
-
-        sorts = {"NEW": "materials.date_added desc",
-                 "HOT": "materials.comments desc",
-                 "TOP": "materials.points desc"}
-        faculties = ["HUM", "IT", "JSBE", "EDU", "SPORT",
-                     "SCIENCE", "YTK", "KIELI", "MUU"]
-
-        query = web.input(query="").query
-        key = web.input(key="").key
-        user_id = web.input(user_id="").user_id
-        course_id = web.input(course_id="").course_id
-
-        if query:  # TODO query min. length?
-            materials = db.get_materials(search=query, limit=30)
-        elif key:
-            if key in sorts:
-                materials = db.get_materials(order_by=sorts[key], limit=30)
-            elif key in faculties:
-                materials = db.get_materials(faculty=key, limit=30)
-        elif user_id:
-            materials = db.get_materials(user_id=user_id, limit=30)
-        elif course_id:
-            materials = db.get_materials(course_id=course_id, limit=30)
-        else:
-            materials = None
-
-        render = create_render(session.privilege, base=False)
-        return render.list_all(materials)
-
-
-class Material:
-    def GET(self, id):
-        """Returns an html snippet containing a material and its comments."""
-        import time
-        time.sleep(1)
-
-        id = int(id)
-
-        if web.ctx.env.get("HTTP_X_REQUESTED_WITH") != "XMLHttpRequest":
-            return "csrf"  # TODO
-
-        material = db.get_materials(id=id)[0]
-        comments = db.get_comments(material_id=id)
-
-        render = create_render(session.privilege, base=False)
-        return render.list_single(material, comments)
-
-    def POST(self, id):
-        """Add a comment to a material. Returns an error message string if
-        fails, otherwise an empty string."""
-        if session.privilege < 1:
-            return "not signed in"  # TODO
-        if web.ctx.env.get("HTTP_X_REQUESTED_WITH") != "XMLHttpRequest":
-            return "possible csrf"  # TODO
-
-        comment = web.input().comment
-
-        if len(comment) > 300:
-            return "Kommentin maksimipituus on 300 merkkiä"
-        db.add_comment(comment, session.id, int(id))
-        return ""
-
-
-class Index:
-    def GET(self):
-        """Index page with lists of newest and most popular materials."""
-        render = create_render(session.privilege)
-        return render.index()
-
-
-class SetTimezone():
-    def POST(self):
-        """Stores user's timezone offset to the session object."""
-        offset = web.input(offset=None).offset
-        if offset:
-            offset = int(offset) / 60 * -1
-        session.timezone = offset
-
-
-class Logout:
-    """Kill the session."""
-    def POST(self):
-        path = web.ctx.env.get("HTTP_REFERER", "/")  # Previous page or index.
-        session.login = 0
-        session.kill()
-        raise web.seeother(path)
 
 
 ### UTILITIES ###
@@ -566,22 +123,14 @@ def delete_file(path):
     return True
 
 
-def urlencode(url):
-    return urllib2.quote(url.encode("utf-8")) if url else ""
-
-
-def urldecode(url):
-    return urllib2.unquote(url) if url else ""
-
-
 def create_render(privilege, base=True):
     """Create a render object based on user's privilege; different privileges
     use different HTML templates."""
     my_globals = {"session": session,
                   "format_date": format_date,
                   "format_size": format_size,
-                  "format_time": format_time}
-
+                  "format_time": format_time,
+                  "csrf_token": csrf_token}
     base = "base" if base else None
     if logged():
         if privilege == 0:
@@ -595,7 +144,32 @@ def create_render(privilege, base=True):
     return render
 
 
+def csrf_protected(f):
+    """Checks for CSRF by comparing tokens, or in case of AJAX requests,
+    checking that the request was made with a XMLHttpRequest which doesn't
+    allow third party connections."""
+    def decorated(*args, **kws):
+        if web.ctx.env.get("HTTP_X_REQUESTED_WITH") != "XMLHttpRequest":
+            inp = web.input(csrf_token="")
+            if not (inp.csrf_token == session.csrf_token):
+                raise web.HTTPError(
+                    "400 Bad request",
+                    {"content-type": "text/html"},
+                    "Possible CSRF attempt."
+                )
+        return f(*args, **kws)
+    return decorated
+
+
 ### TEMPLATE FUNCTIONS ###
+
+def csrf_token():
+    """Assigns user a random string which is used to mark each csrf-protected
+    non-AJAX form."""
+    if not "csrf_token" in session:
+        session.csrf_token = uuid.uuid4().hex
+        print "token:", session.csrf_token
+    return session.csrf_token
 
 
 def format_date(date_str):
@@ -653,6 +227,453 @@ def doctest():
     """Run doctests."""
     import doctest
     doctest.testmod()
+
+
+### PAGES ###
+
+class Index:
+    def GET(self):
+        """Renders an index page."""
+        render = create_render(session.privilege)
+        return render.index()
+
+
+class SetTimezone():
+    @csrf_protected
+    def POST(self):
+        """Stores user's timezone offset to the session object.
+        Timezone is obtained by Javascript."""
+        offset = web.input(offset=None).offset
+        if offset:
+            offset = int(offset) / 60 * -1
+        session.timezone = offset
+
+
+class Logout:
+    """Kill the session, redirect to index."""
+    def GET(self):
+        session.login = 0
+        session.kill()
+        raise web.seeother("/")
+
+
+class Download():
+    def GET(self, id):
+        """Serves a file."""
+        try:
+            material = db.select("materials", id=int(id))[0]
+        except IndexError:
+            raise web.notfound()  # Material doesn't exist.
+
+        path = create_path(id) + "." + material.type
+        if not os.path.exists(path):
+            raise web.notfound()  # File doesn't exist.
+        try:
+            content_type = mimetypes.types_map["." + material.type]
+            web.header("Content-Type", content_type)
+        except KeyError:
+            pass  # Content type is unknown.
+
+        web.header("Transfer-Encoding", "chunked")
+        f = open(path, 'rb')
+        while 1:
+            buf = f.read(1024)  # Doesn't load the whole file into memory.
+            if not buf:
+                f.close()
+                break
+            yield buf
+
+
+class Upload:
+    def GET(self, id):
+        """Renders a form for adding a new material."""
+        if session.privilege < 1:
+            raise web.seeother("/register")
+        try:
+            course = db.select("courses", id=id)[0]
+        except IndexError:
+            raise web.notfound()
+
+        render = create_render(session.privilege)
+        return render.upload(course)
+
+    @csrf_protected
+    def POST(self, id):
+        """Validates material submission form, adds a new material entry and
+        uploads the corresponding file. Returns an error message or an empty
+        string if nothing went wrong."""
+        course_id = int(id)
+        title = web.input().title.strip().capitalize()
+        tags = web.input().tags.strip().replace(",", " ").split()[:5]
+        tags = " ".join([tag for tag in tags if len(tag) < 20])
+        description = web.input().description.strip().capitalize()
+        if len(description) > 300:
+            description = description[:300] + "..."
+
+        if re.match(r"^.{4,40}$", title) == None:
+            return "Materiaalin nimi ei ole annetussa muodossa."
+
+        # Insert material to database, use row id to generate file path:
+        material_id = db.insert("materials", title=title, description=description,
+            tags=tags, course_id=course_id, user_id=session.id)
+
+        # Create a path from id, eg. 11 becomes ".\\uploads\\000\\011"
+        path = create_path(material_id)
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+
+        try:
+            x = web.input(myfile={})
+            if "myfile" in x:
+                file_to_upload = x["myfile"]
+                filepath = file_to_upload.filename.replace("\\", "/")
+                filename = filepath.split("/")[-1]
+                filetype = filename.split(".")[-1]
+                path += "." + filetype
+
+                # Check for illegal file types:
+                if not filetype in ALLOWED_FILETYPES or filetype == filename:
+                    db.delete("materials", id=material_id)
+                    return "Tiedostotyyppi ei ole sallittu."
+
+                # Upload file:
+                fout = open(path, "wb")
+                fout.write(file_to_upload.file.read())
+                fout.close()
+
+                # If file is zipped, check contents:
+                if filetype == "zip" and not is_valid_zip(path):
+                    db.delete("materials", id=material_id)
+                    delete_file(path)
+                    return "Zip-tiedosto sisältää ei sallittuja tiedostoja."
+
+                # Update file size and type to database:
+                size = os.path.getsize(path) / 1024
+                db.update("materials", material_id, type=filetype, size=size)
+            else:
+                db.delete("materials", id=material_id)
+                return "Lataaminen epäonnistui, yritä hetken kuluttua uudestaan."
+            return ""
+        except ValueError:  # File is too large.
+            db.delete("materials", id=material_id)
+            delete_file(path)
+            return "Tiedoston maksimikoko on 10MB."
+
+
+class Like:
+    @csrf_protected
+    def GET(self):
+        """'Likes' a material, i.e. inreases it's points by one and adds
+        the material's id to user's 'liked' column. Returns current points if
+        succeed, otherwise an empty string."""
+        id = web.input(id=None).id
+        if not id or session.privilege < 1:
+            return ""
+
+        user = db.select("users", id=session.id)[0]
+        material = db.select("materials", id=int(id))[0]
+        liked = db.select("users", id=session.id)[0].liked
+
+        # Don't like if user has already liked this material or owns the material:
+        if liked and id in liked.split(" ") or material.user_id == user.id:
+            return ""
+
+        points = db.like_material(material_id=int(id), user_id=session.id)
+        return str(points)
+
+
+class Add:
+    def GET(self):
+        """Renders a page where user can pick a course to add materials to."""
+        if session.privilege == 0:
+            if session.login:
+                raise web.seeother("/confirm")
+            raise web.seeother("/register")
+
+        render = create_render(session.privilege)
+        return render.choose_course()
+
+    @csrf_protected
+    def POST(self):
+        """Validates the course form, sends a JSON response which either has a
+        redirect url or an error message. If form is valid, adds the course."""
+        code = web.input().code.strip().upper()
+        title = web.input().title.strip().capitalize()
+        title = re.sub(" +", " ", title)
+        faculty = web.input().faculty
+        course = db.select("courses", code=code.upper()).list()
+        resp = ""
+
+        # First check for empty fields:
+        if "" in [code, title]:
+            resp = {"error": "Lomake sisältää tyhjiä kenttiä."}
+
+        # Then check if a course with the same code already exists:
+        elif course:
+            resp = {"redirect": "/add/" + str(course[0].id)}
+
+        # Finally check that submitted forms are valid:
+        elif re.match(r"^[A-Z0-9]{5}\d{2}$", code) == None:
+            resp = {"error": "Kurssikoodi ei ole sallitussa muodossa."}
+        elif re.match(r"^.{1,50}$", title) == None:  # TODO parempi regex?
+            resp = {"error": "Kurssin nimi ei ole sallitussa muodossa."}
+        elif not faculty in ["HUM", "IT", "JSBE", "EDU", "SPORT",
+                             "SCIENCE", "YTK", "KIELI", "MUU"]:
+            resp = {"error": "Valitse kurssin organisaatio."}
+
+        # Information is valid, add course to database:
+        else:
+            id = db.insert("courses", code=code, title=title, faculty=faculty)
+            resp = {"redirect": "/add/" + str(id)}
+
+        web.header("Content-Type", "application/json")
+        return json.dumps(resp)
+
+
+class Confirm:
+    def GET(self, conf_code):
+        """Renders a page with a button for account verification
+        and another for account deletion."""
+        try:
+            user = db.select("users", conf_code=conf_code)[0]
+        except IndexError:
+            raise web.notfound()
+
+        # Log in:
+        session.login = 1
+        session.privilege = user.privilege
+        session.user = user.name
+        session.id = user.id
+
+        activated = web.input(activated=None).activated
+        render = create_render(session.privilege)
+        return render.confirm(activated)
+
+    def POST(self, conf_code):
+        """Activates an user, ie. updates privilege to 1."""
+        db.update("users", session.id, privilege=1)
+        path = web.ctx.env.get("HTTP_REFERER", "/")
+        if path != "/":
+            path += "?activated=1"
+        raise web.seeother(path)
+
+
+class SendConfirmation:
+    def GET(self):
+        """Renders a form for user's email."""
+        user = db.select("users", id=session.id).list()
+        if not user or session.privilege != 0:
+            raise web.notfound()
+        error = web.input(error=None).error
+        email_sent = web.input(email_sent=None).email_sent
+        render = create_render(session.privilege)
+        return render.send_confirm_email(error, email_sent)
+
+    @csrf_protected
+    def POST(self):
+        """Sends confirmation email to given address."""
+        email = web.input(email="").email
+        user = db.select("users", id=session.id)[0]
+
+        email_re = r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$"
+        if re.match(email_re, email, re.IGNORECASE) == None:  # Invalid email.
+            raise web.seeother("/confirm?error=bad_email")
+
+        conf_code = user.conf_code
+        ip = socket.gethostbyname(socket.gethostname())
+        conf_url = "http://%s:8080/confirm/%s" % (ip, str(conf_code))
+        subject = "Kurssimateriaalit - Aktivoi käyttäjätilisi"
+        message = u"Aktivoi käyttäjätilisi '%s' osoitteessa %s" % (user.name, conf_url)
+
+        try:
+            web.sendmail(web.config.smtp_username, email, subject, message)
+        except:
+            raise web.seeother("/confirm")
+        raise web.seeother("/confirm?email_sent=1")
+
+
+class Register:
+    def GET(self):
+        """Renders a login/register form."""
+        render = create_render(session.privilege)
+        return render.register()
+
+    @csrf_protected
+    def POST(self):
+        """Validates registration form, adds a new user and redirects."""
+        i = web.input(username=None, password1=None, password2=None)
+        name, passwd1, passwd2 = i["username"], i["password1"], i["password2"]
+        username_re = r"[A-ZÅÄÖ0-9]{4,20}"
+        password_re = r"^(?=.*\d)(?=.*[a-zåäö])(?=.*[A-ZÅÄÖ])[0-9a-zöäåA-ZÅÄÖ!@#%]{8,80}$"
+
+        validators = [
+            ((lambda n, p1, p2: not n or not p1 or not p2),
+              "Täytä kaikki kentät."),
+            ((lambda n, p1, p2: p1 != p2),
+              "Salasana ei vastaa varmistusta."),
+            ((lambda n, p1, p2: re.match(username_re, n, re.IGNORECASE) == None),
+              "Käyttäjänimi ei ole sallitussa muodossa."),
+            ((lambda n, p1, p2: re.match(password_re, p1) == None),
+              "Salasana ei ole sallitussa muodossa."),
+            ((lambda n, p1, p2: db.select("users", name=n).list()),
+              "Käyttäjänimi on varattu.")
+        ]
+
+        for (f, msg) in validators:
+            if f(name, passwd1, passwd2):
+                return msg
+
+        # Input validated, add user to database:
+        salt = unicode(uuid.uuid4().hex)
+        hash = unicode(hashlib.sha256(passwd1.encode("utf-8") + salt).hexdigest())
+        conf_code = unicode(hashlib.md5(uuid.uuid4().hex + name.encode("utf-8")).hexdigest())
+        id = db.insert("users", name=name, hash=hash, salt=salt,
+            conf_code=conf_code, privilege=0)
+
+        # Log in:
+        session.login = 1
+        session.privilege = 0
+        session.id = id
+        return ""
+
+
+class Login:
+    @csrf_protected
+    def POST(self):
+        """Tries to log in, returns an error message or an empty string."""
+        i = web.input(username="", password="")
+        name, passwd = i["username"], i["password"]
+        try:
+            ident = db.select("users", name=name)[0]
+        except IndexError:  # Username not found.
+            return "Virheellinen käyttäjänimi tai salasana."
+
+        try:
+            salted_pass = passwd.encode("utf-8") + str(ident.salt)
+            # Login OK:
+            if hashlib.sha256(salted_pass).hexdigest() == ident.hash:
+                session.login = 1
+                session.privilege = ident.privilege
+                session.user = ident.name
+                session.id = ident.id
+                # Update user's last login date:
+                date = str(datetime.date.today())
+                db.update("users", ident.id, last_login=date)
+                return ""
+            # Wrong password:
+            else:
+                session.login = 0
+                session.privilege = 0
+                return "Virheellinen käyttäjänimi tai salasana."
+        except Exception:
+            return "Kirjautuminen epäonnistui."
+
+
+class Courses:
+    @csrf_protected
+    def GET(self):
+        """Returns an HTML snippet containing a table of the courses that
+        matched the query, and a form for adding a new course."""
+        render = create_render(session.privilege, base=False)
+        query = web.input(query="").query
+        if not query:
+            return render.course_results(None)
+        courses = db.search_courses(query).list()
+        return render.course_results(courses)
+
+
+class CoursesJSON:
+    @csrf_protected
+    def GET(self):
+        """Returns JSON that contains the ids and codes of the most popular
+        courses, plus the amount of materials each one has."""
+        courses = db.get_courses(order_by="materials desc",
+            limit=10)
+        obj = []
+        for c in courses:
+            obj.append({"id": c.id, "code": c.code, "materials": c.materials})
+
+        web.header("Content-Type", "application/json")
+        return json.dumps(obj)
+
+
+class Delete:
+    def GET(self, id):
+        """Deletes a material and its corresponding file."""
+        id = int(id)
+        try:
+            material = db.select("materials", id=id)[0]
+        except IndexError:
+            raise web.notfound()
+        # Only a material's owner or an admin can delete:
+        if not (session.id == material.user_id or session.privilege == 2):
+            raise web.notfound()
+
+        filetype = material.type
+        db.delete_material(id)
+        delete_file(create_path(id) + "." + filetype)
+        raise web.seeother("/")
+
+
+class Materials:
+    @csrf_protected
+    def GET(self):
+        """Returns an html snippet containing materials in table rows."""
+        sorts = {"NEW": "materials.date_added desc",
+                 "HOT": "materials.comments desc",
+                 "TOP": "materials.points desc"}
+        faculties = ["HUM", "IT", "JSBE", "EDU", "SPORT",
+                     "SCIENCE", "YTK", "KIELI", "MUU"]
+
+        query = web.input(query="").query
+        key = web.input(key="").key
+        user_id = web.input(user_id="").user_id
+        course_id = web.input(course_id="").course_id
+
+        if query:
+            materials = db.get_materials(search=query, limit=30)
+        elif key:
+            if key in sorts:
+                materials = db.get_materials(order_by=sorts[key], limit=30)
+            elif key in faculties:
+                materials = db.get_materials(faculty=key, limit=30)
+        elif user_id:
+            materials = db.get_materials(user_id=user_id, limit=30)
+        elif course_id:
+            materials = db.get_materials(course_id=course_id, limit=30)
+        else:
+            materials = None
+
+        render = create_render(session.privilege, base=False)
+        return render.list_all(materials)
+
+
+class Material:
+    @csrf_protected
+    def GET(self, id):
+        """Returns an HTML snippet containing a material and its comments."""
+        id = int(id)
+
+        material = db.get_materials(id=id)[0]
+        comments = db.get_comments(material_id=id)
+
+        render = create_render(session.privilege, base=False)
+        return render.list_single(material, comments)
+
+    @csrf_protected
+    def POST(self, id):
+        """Add a comment to a material. Returns an error message string if
+        fails, otherwise an empty string."""
+        if session.privilege < 1:
+            return "Kirjaudu sisään kommentoidaksesi."
+
+        comment = web.input().comment
+
+        if len(comment) > 300:
+            return "Kommentin maksimipituus on 300 merkkiä"
+        db.add_comment(comment, session.id, int(id))
+        return ""
+
 
 if __name__ == "__main__":
     app.run()

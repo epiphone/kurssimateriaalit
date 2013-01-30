@@ -1,122 +1,178 @@
-$def with (new_materials, top_materials)
 $var title: Kurssimateriaalit 0.1 - Index
 $var show_login_form: True
 
 <div class="container">
-
   <!-- HEADER -->
   <div class="hero-unit">
-    <h1>Kurssimateriaalit 0.1<small>prototyyppi</small></h1>
-    <p>Jaa muistiinpanosi, tiivistelmät, mindmapit, mitkälie. tjsp.</p>
-    <br>
-    <a href="/materials" class="btn btn-primary btn-large">Selaa materiaaleja &raquo;</a>
-    <a href="/courses" class="btn btn-primary btn-large">Selaa kursseja &raquo;</a>
-    <a href="/add" class="btn btn-primary btn-large">Lisää oma &raquo;</a>
+    <div class="title">
+      <h1>Kurssimateriaalit</h1>
+      <p>Jaa muistiinpanot, tiivistelmät yms. helposti</p>
+    </div>
+    <div class="tagcloud hidden-phone">
+    </div>
+    <div class="clearfix"></div>
   </div>
 
-  
-  <div class="row">
-    <!-- NEW MATERIALS -->
-    <div class="span4">
-      <!-- NAVBAR -->
-      <div class="navbar">
-        <div class="navbar-inner">
-          <div class="container">
-            <a class="brand" href="#">Uusimmat materiaalit</a>
-          </div>
-        </div>
+  <div class="row">        
+    <!-- TABLE OF MATERIALS -->
+    <div class="span5 materials">
+      <table class="tablesorter table-condensed">
+        <thead>
+          <tr>
+            <th>Kurssi</th>
+            <th>Otsikko</th>
+            <th><i class="icon-user"></i></th>
+            <th><i class="icon-time"></i></th>
+            <th><i class="icon-comment"></i></th>
+            <th><i class="icon-thumbs-up"></i></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr></tr>
+        </tbody>
+      </table>
+      <div class="spinner"></div>
+    </div>
+
+    <!-- SELECTED MATERIAL -->     
+    <div class="span4 selected-material">
+      <div class="none-selected">
+        <h3 class="muted">Valitse materiaali</h3>
       </div>
-      <!-- ITEMS -->
-      $for m in new_materials:
-      <div class="material-listitem $loop.parity">
-        <div class="left">
-          <div class="course">
-            <span class="label label-info">$m.code</span><a rel="tooltip" data-placement="right" title="$m.description" href="/download/$m.id"> $m.title</a>
-            <small>.$m.type</small>
-          </div>
+    </div>
 
-          <div class="userinfo">
-            <!-- <i class="icon-user"></i> -->
-            <a href="#">$m.name</a> <small>$format_date(m.date_added) - 
-            <a href="#" class="comments">Kommentteja: 12</a></small>
+    <!-- RIGHT SIDEBAR -->
+    <div class="span3" style="background-color:#F5F5F5;border-radius:8px;">
+      <ul class="nav nav-list">
+        <form class="form-search" style="margin-top:20px;">
+          <div class="input-append">
+            <input type="text" class="span2 search-query" placeholder="Etsi materiaaleja" autofocus>
+            <button type="submit" class="btn btn-primary"><i class="icon-search"></i></button>
           </div>
-        </div><!-- /.left -->
-
-        <div class="right pull-right">
-          <span class="badge badge-success pull-right">$m.points</span>
-          <a href=""><i class="icon-plus"></i></a>
+        </form>
+        <li class="divider"></li>
+        <li class="nav-header">Pikavalinta</li>
+        <li data-key="NEW" class="active"><a href="">Uusimmat</a></li>
+        <li data-key="HOT"><a href="">Kommentoiduimmat</a></li>
+        <li data-key="TOP"><a href="">Parhaat</a></li>
+        <li class="divider"></li>
+        <li class="nav-header">Organisaatio</li>
+        <li data-key="HUM"><a href="">Humanistinen</a></li>
+        <li data-key="IT"><a href="">Informaatioteknologian</a></li>
+        <li data-key="JSBE"><a href="">Kauppakorkeakoulu</a></li>
+        <li data-key="EDU"><a href="">Kasvatustieteiden</a></li>
+        <li data-key="SPORT"><a href="">Liikuntatieteellinen</a></li>
+        <li data-key="SCIENCE"><a href="">Matemaattis-luonnontieteellinen</a></li>
+        <li data-key="YTK"><a href="">Yhteiskuntatieteellinen</a></li>
+        <li data-key="KIELI"><a href="">Kielikeskus</a></li>
+        <li data-key="MUU"><a href="">Muu</a></li>
+        <li class="divider"></li>
+        <div class="sidebar-addnew">
+          <a href="/add" class="btn btn-large btn-success">Lisää uusi <i class="icon-plus"></i></a>
         </div>
-      </div><!--/.material-listitem-->
-    </div><!--/.span*-->
-
-
-    <!-- TOP MATERIALS -->
-    <div class="span4">
-      <!-- NAVBAR -->
-      <div class="navbar">
-        <div class="navbar-inner">
-          <div class="container">
-            <a class="brand" href="#">Parhaat materiaalit</a>
-          </div>
-        </div>
-      </div>
-      <!-- ITEMS -->
-      $for m in top_materials:
-      <div class="material-listitem $loop.parity">
-        <div class="left">
-          <div class="course">
-            <span class="label label-info">$m.code</span><a rel="tooltip" title="$m.description" href="/download/$m.id"> $m.title</a>
-            <small>.$m.type</small>
-          </div>
-
-          <div class="userinfo">
-            <!-- <i class="icon-user"></i> -->
-            <a href="#">$m.name</a> <small>$format_date(m.date_added) - 
-            <a href="#" class="comments">Kommentteja: 12</a></small>
-          </div>
-        </div><!-- /.left -->
-
-        <div class="right pull-right">
-          <span class="badge badge-success pull-right">$m.points</span>
-          <a href="" data-id="$m.id"><i class="icon-plus"></i></a>
-        </div>
-      </div><!--/.material-listitem-->
-    </div><!--/.span*-->
-
+      </ul>
+    </div><!-- /.span3 -->
   </div><!--/.row-->
 </div><!--/.container-->
 
-<script> 
+<script>
 window.onload = function(){
-    // Enable tooltips on course names:
-    $$("[rel='tooltip']").tooltip();
-    // Show plus-signs next to points displays when hovering:
-    $$(".right>a").css("visibility", "hidden");
-    $$(".material-listitem").hover(function(){
-        $$(this).children(".right").children("a").css("visibility", "visible");
-    }, function() {
-        $$(this).children(".right").children("a").css("visibility", "hidden");
-    });
-    // Perform Ajax operation when liking a material:
-    $$(".right>a").click(function () {
-        var id = $$(this).attr("data-id"),
-            clicked = this,
-            points_display = $$(clicked).siblings(":first");
-        $$.ajax({
-            type: "GET",
-            url: "/like",
-            data: {id: id},
-            success: function(data) {
-                if (data=="") {
-                    var points = parseInt($$(points_display).text()) + 1;
-                    $$(points_display).text(points);
-                } else {
-                    $$(points_display).removeClass("badge-success").addClass("badge-important");
-                }
-            },
-            dataType: "text"
-        });
+  $if not session.timezone:
+    var offset = new Date().getTimezoneOffset();
+    $$.post("/timezone", {offset: offset});
+
+  var selected = $$(".selected-material"),
+      table_spinner = $$(".spinner").eq(0);
+  
+  $$(".tablesorter").tablesorter();
+
+  // Load a list of materials:
+  function load_table(options) {
+    if ($$(".tablesorter tbody").children().length > 0) {
+      $$(".tablesorter").trigger("sorton", [[]]) // Clear sorting.
+    }
+    $$(table_spinner).show();
+    $$("tbody").load("/materials?" + $$.param(options),
+      function() {
+        $$(table_spinner).hide();
+        $$(".tablesorter").trigger("update");
+      }
+    ); 
+  };
+
+  // Load a single material and its comments:
+  function load_selected(id) {
+    $$(selected).append("<div class='spinner'></div>");
+    $$(selected).load("materials/" + id);
+  };
+
+  // Load initial materials on startup:
+  load_table({key: "NEW"});
+
+  // Load materials on search form submit:
+  $$(".form-search").submit(function() {
+    $$(".nav-list li.active").removeClass("active");
+    var query = $$(this).find("input").val();
+    load_table({query: query});
     return false;
-    });
+  });
+
+  // Load materials when a sidebar link is clicked:
+  $$(".nav-list li[data-key]").click(function() {
+    $$(".nav-list li.active").removeClass("active");
+    $$(this).addClass("active");
+    var key = $$(this).attr("data-key");
+    load_table({key: key});
+    return false;
+  });
+
+  // Load materials when a username link is clicked:
+  $$(".user-link").live("click", function() {
+    $$(".nav-list li.active").removeClass("active");
+    var id = $$(this).attr("data-id");
+    load_table({user_id: id});
+    return false;
+  });
+
+  // Load materials when a course link is clicked
+  $$(".course-link").live("click", function() {
+    $$(".nav-list li.active").removeClass("active");
+    var id = $$(this).attr("data-id");
+    load_table({course_id: id});
+    return false;
+  });
+
+  // Load materials when a tag link is clicked
+  $$(".tag-link").live("click", function() {
+    $$(".nav-list li.active").removeClass("active");
+    var query = $$(this).text();
+    load_table({query: query});
+    return false;
+  });
+
+  // Load a material+comments when an appropriate table row is clicked:
+  $$(".tablesorter tr").live("click", function(){
+    $$(".tablesorter .selected").removeClass("selected");
+    $$(this).addClass("selected");
+    var id = $$(this).attr("data-id");
+    load_selected(id);
+    return false;
+  });
+
+  // Load the most popular courses and draw them into a cloud:
+  $$.getJSON("/coursesJSON",
+      function(data) {
+          var courses = [];
+          for (var i = 0; i < data.length; i++) {
+              var item = {
+                  text: data[i].code,
+                  weight: data[i].materials,
+                  link: "#",
+                  html: {class: "course-link", "data-id": data[i].id}
+              }
+              courses.push(item);
+          }
+          $$(".tagcloud").jQCloud(courses);
+  });
 }
 </script>

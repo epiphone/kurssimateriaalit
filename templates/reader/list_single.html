@@ -10,29 +10,25 @@ $# Renders a single material and its comments.
     <a href="" data-id="$material.user_id" class="user-link">$material.name</a> $format_date(material.date_added) - $material.points tykkäystä
   </div>  
   <br>
-  
   <blockquote>
     $if material.description:
       $material.description
     $else:
       Ei kuvausta.
   </blockquote>
-  
   $if material.tags:
     <div class="material-tags">
       tagit:
       $for tag in material.tags.split():
         <a href="" class="tag-link">$tag</a>
     </div>
-</div><!--/.material-info-->
+</div>
 
 <!-- BUTTONS -->
 <div class="material-buttons">
   <div>
-    <a class="btn btn-like" data-id="$material.id">Tykkää <i class="icon-thumbs-up"></i></a>
+    <a href="/register" class="btn btn-like" data-id="$material.id">Tykkää <i class="icon-thumbs-up"></i></a>
     <a href="/download/$material.id" class="btn">Lataa <i class="icon-file"></i></a>
-    $if material.user_id == session.id:
-      <a href="/delete/$material.id" class="btn btn-danger">Poista <i class="icon-remove"></i></a>
     <p class="muted"><small>.$material.type $format_size(material.size)</small></p>
   </div>
 </div>
@@ -53,6 +49,6 @@ $else:
 <div class="comment-form">
   <form>
     <textarea rows="3" placeholder="Maksimipituus 300 merkkiä"></textarea>
-    <a class="btn btn-comment pull-right" data-id="$material.id" href="">Lisää kommentti <i class="icon-comment"></i></a>
+    <a href="/register" class="btn btn-comment pull-right">Lisää kommentti <i class="icon-comment"></i></a>
   </form>
 </div>

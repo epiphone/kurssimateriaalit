@@ -1,0 +1,55 @@
+$var title: Kurssimateriaalit 0.1 - Valitse kurssi
+$var show_login_form: True
+$# A page with a search form for courses.
+
+<div class="container">
+  <div class="row">
+    <div class="span8 offset2 well course-search">
+      <div class="page-header">
+        <ul class="nav nav-pills">
+          <li class="active"><a href="/add">1. Valitse kurssi</a></li>
+          <li class="disabled"><a>2. Lisää materiaali</a></li>
+          <li class="disabled"><a>3. Valmis!</a></li>
+        </ul>
+      </div>
+      <form class="form-search">
+        <h2>Hae kursseja:</h2>
+        <div class="input-append">
+          <input type="text" name="query" value="ITKA101" class="span3 search-query" placeholder="Hae kursseja" required autofocus>
+          <button type="submit" class="btn btn-primary">
+            <i class="icon-search icon-white"></i>
+          </button>
+        </div>
+      </form>
+      <div class="search-results">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.onload = function(){
+  $$(".search-query").select();
+
+  // Search courses:
+  $$(".form-search").submit(function(){
+    $$(".search-results").append("<div class='spinner'></div>")
+    .load("/courses?" + $$(this).serialize());
+    return false;
+  })
+
+  // Submit course form, show error msg or redirect.
+  $$(".form-course").live("submit", function(){
+    $$("#course-error").hide();
+    $$.post("/add", $$(this).serialize(),
+      function(json){
+        if (json.redirect) {
+          window.location.replace(json.redirect);
+        } else {
+          $$("#course-error div").text(json.error).parents().show();
+        }
+      }, "json");
+    return false;
+  });
+}
+</script>

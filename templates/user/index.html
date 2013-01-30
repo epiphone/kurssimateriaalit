@@ -8,7 +8,7 @@ $var show_login_form: True
       <h1>Kurssimateriaalit</h1>
       <p>Jaa muistiinpanot, tiivistelmät yms. helposti</p>
     </div>
-    <div class="tagcloud">
+    <div class="tagcloud hidden-phone">
     </div>
     <div class="clearfix"></div>
   </div>
@@ -28,11 +28,7 @@ $var show_login_form: True
           </tr>
         </thead>
         <tbody>
-          $for i in range(10):
-            <tr>
-              $for j in range(6):
-              <td>&nbsp;</td>
-            </tr>
+          <tr></tr>
         </tbody>
       </table>
       <div class="spinner"></div>
@@ -40,7 +36,9 @@ $var show_login_form: True
 
     <!-- SELECTED MATERIAL -->     
     <div class="span4 selected-material">
-      <div >Tähän jotakin (<-- valitse listasta tms)</div>
+      <div class="none-selected">
+        <h3 class="muted">Valitse materiaali</h3>
+      </div>
     </div>
 
     <!-- RIGHT SIDEBAR -->
@@ -83,16 +81,20 @@ window.onload = function(){
     var offset = new Date().getTimezoneOffset();
     $$.post("/timezone", {offset: offset});
 
-  var table = $$(".tablesorter tbody"),
-      selected = $$(".selected-material"),
+  var selected = $$(".selected-material"),
       table_spinner = $$(".spinner").eq(0);
+  
+  $$(".tablesorter").tablesorter();
+
   // Load a list of materials:
   function load_table(options) {
+    if ($$(".tablesorter tbody").children().length > 0) {
+      $$(".tablesorter").trigger("sorton", [[]]) // Clear sorting.
+    }
     $$(table_spinner).show();
-    $$(table).load("/materials?" + $$.param(options),
+    $$("tbody").load("/materials?" + $$.param(options),
       function() {
         $$(table_spinner).hide();
-        $$(".tablesorter").tablesorter();
         $$(".tablesorter").trigger("update");
       }
     ); 
@@ -106,7 +108,6 @@ window.onload = function(){
 
   // Load initial materials on startup:
   load_table({key: "NEW"});
-
 
   // Load materials on search form submit:
   $$(".form-search").submit(function() {
@@ -123,7 +124,7 @@ window.onload = function(){
     var key = $$(this).attr("data-key");
     load_table({key: key});
     return false;
-  })
+  });
 
   // Load materials when a username link is clicked:
   $$(".user-link").live("click", function() {
@@ -156,7 +157,7 @@ window.onload = function(){
     var id = $$(this).attr("data-id");
     load_selected(id);
     return false;
-  })
+  });
     
   // Add a comment:
   $$(".btn-comment").live("click", function(){
@@ -194,7 +195,7 @@ window.onload = function(){
   });
 
   // Load the most popular courses and draw them into a cloud:
-  $$.getJSON("/courses",
+  $$.getJSON("/coursesJSON",
       function(data) {
           var courses = [];
           for (var i = 0; i < data.length; i++) {

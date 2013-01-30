@@ -1,3 +1,5 @@
+/* Kurssimateriaalit - Aleksi Pekkala */
+
 body {
     padding-top: 60px;
     padding-bottom: 40px;
@@ -9,24 +11,38 @@ a:hover i {
 }
 
 .spinner {
-    display:block;
+    display: block;
     position: absolute;
     z-index: 1000;
-    height:     100%;
-    width:      100%;
-    left:0;
-    top:0;
+    min-height: 400px;
+    height: 100%;
+    width: 100%;
+    left: 0;
+    top: 0;
     background: rgba(255, 255, 255, .8) 
                 url("../img/spinner.gif") 
                 50% 50% 
                 no-repeat;
 }
 
+.btn-spinner {
+    background: rgba(255, 255, 255, .9) 
+                url("../img/btn-spinner.gif") 
+                50% 50% 
+                no-repeat;  
+}
+
+.nonvisible {
+    display: none;
+}
+
 /* ### INDEX HEADER ### */
 
 .hero-unit {
     padding: 0;
-    border-radius: 8px;
+    -webkit-border-radius: 8px;
+       -moz-border-radius: 8px;
+            border-radius: 8px;
     overflow: hidden;
 }
 
@@ -36,10 +52,11 @@ a:hover i {
 }
 
 .hero-unit .tagcloud {
+    position: relative;
     overflow: hidden;
-    width: 300px;
-    height: 200px;
-    margin: 20px auto;
+    width: 350px;
+    height: 250px;
+    margin: auto;
 }
 
 /* ### NAVBAR ### */
@@ -52,11 +69,11 @@ a:hover i {
     height: auto;
 }
 
-.navbar-form button {
+.navbar-form a {
     margin-left: 5px;
 }
 
-.navbar-text a{
+.navbar-text a {
     margin-right: 20px;
 }
 
@@ -71,14 +88,15 @@ a:hover i {
 /* ### REGISTER & LOGIN FORMS */
 
 .form-signin {
+    position: relative;
     max-width: 300px;
     padding: 19px 29px 29px;
     margin: 0 auto 20px;
     background-color: #fff;
     border: 1px solid #e5e5e5;
-    -webkit-border-radius: 5px;
-       -moz-border-radius: 5px;
-            border-radius: 5px;
+    -webkit-border-radius: 8px;
+       -moz-border-radius: 8px;
+            border-radius: 8px;
     -webkit-box-shadow: 0 1px 2px rgba(0,0,0,.05);
        -moz-box-shadow: 0 1px 2px rgba(0,0,0,.05);
             box-shadow: 0 1px 2px rgba(0,0,0,.05);
@@ -94,16 +112,28 @@ a:hover i {
     padding: 7px 9px;
 }
 
-
 /* ### SELECTED MATERIAL  ### */
 
 .selected-material {
     position: relative;
+    min-height: 400px;
+}
+
+.selected-material .none-selected {
+    min-height: 400px;
+    border: 4px dashed #EEEEEE;
+    -webkit-border-radius: 8px;
+       -moz-border-radius: 8px;
+            border-radius: 8px;
+    text-align: center;
+    padding: 10px 0;
 }
 
 .selected-material .material-info {
     border: 1px solid #D9EDF7;
-    border-radius: 8px;
+    -webkit-border-radius: 8px;
+       -moz-border-radius: 8px;
+            border-radius: 8px;
     padding: 8px;
 }
 
@@ -129,7 +159,9 @@ a:hover i {
 
 .selected-material .material-buttons {
     background-color: #D9EDF7;
-    border-radius: 8px;
+    -webkit-border-radius: 8px;
+       -moz-border-radius: 8px;
+            border-radius: 8px;
     margin-bottom: 10px;
     padding: 24px 0 4px;
     text-align: center;
@@ -212,4 +244,10 @@ table.tablesorter tr:hover > td, table.tablesorter .selected > td {
 .sidebar-addnew {
     text-align: center;
     margin: 20px 0;
+}
+
+/* ### UPLOAD & ADD NEW COURSE ### */
+
+.search-results {
+    position: relative;
 }
