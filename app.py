@@ -481,7 +481,7 @@ class SendConfirmation:
 
         conf_code = user.conf_code
         ip = socket.gethostbyname(socket.gethostname())
-        conf_url = "http://%s:80/confirm/%s" % (ip, str(conf_code))
+        conf_url = "http://toimiiks.cloudapp.net/confirm/%s" % str(conf_code)  # TODO osoitteen automaattinen tunnistus
         subject = "Kurssimateriaalit - Aktivoi käyttäjätilisi"
         message = u"Aktivoi käyttäjätilisi '%s' osoitteessa %s" % (user.name, conf_url)
 
