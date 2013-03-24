@@ -63,7 +63,7 @@ except IOError:
 cgi.maxlen = 10 * 1024 * 1024
 
 app = web.application(urls, globals(), True)
-# application = app.wsgifunc()
+application = app.wsgifunc()
 db = models.DatabaseHandler()
 
 # Every user will have a unique session object:
@@ -677,5 +677,5 @@ class Material:
         db.add_comment(comment, session.id, int(id))
         return ""
 
-if __name__ == "__main__":
-    app.run()
+# if __name__ == "__main__":
+#     app.run()
