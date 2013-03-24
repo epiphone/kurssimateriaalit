@@ -15,6 +15,7 @@ import zipfile
 import datetime
 import json
 import mimetypes
+import shelve
 
 ### INITIALIZATION ###
 
@@ -60,8 +61,6 @@ except IOError:
 # Maximum file upload size:
 cgi.maxlen = 10 * 1024 * 1024
 
-store = web.session.DiskStore("sessions")
-# app = web.application(urls, globals())
 app = web.application(urls, globals())
 application = app.wsgifunc()
 db = models.DatabaseHandler()
@@ -70,6 +69,7 @@ db = models.DatabaseHandler()
 if web.config.get("_session") is None:
     initializer = {"login": 0, "privilege": 0, "user": None,
                    "id": None, "timezone": None}
+    store = web.session.ShelfStore(shelve.open("sessions.shelf"))
     session = web.session.Session(app, store, initializer)
     web.config._session = session
 else:

@@ -4,3 +4,4 @@ sessions/
 uploads/
 *.pyc
 *.txt
+*.shelf
