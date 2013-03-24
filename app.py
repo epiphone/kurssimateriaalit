@@ -62,7 +62,7 @@ cgi.maxlen = 10 * 1024 * 1024
 
 store = web.session.DiskStore("sessions")
 # app = web.application(urls, globals())
-app = web.application(urls, globals()).wsgifunc()
+app = web.application(urls, globals())
 
 db = models.DatabaseHandler()
 
@@ -678,4 +678,4 @@ class Material:
 
 
 if __name__ == "__main__":
-    app.run()
+    application = app.wsgifunc()
