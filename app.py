@@ -62,6 +62,8 @@ cgi.maxlen = 10 * 1024 * 1024
 
 store = web.session.DiskStore("sessions")
 # app = web.application(urls, globals())
+app = web.application(urls, globals()).wsgifunc()
+
 db = models.DatabaseHandler()
 
 # Every user will have a unique session object:
@@ -676,5 +678,4 @@ class Material:
 
 
 if __name__ == "__main__":
-    # app.run()
-    wsgi_app = web.application(urls, globals()).wsgifunc()
+    app.run()
