@@ -63,7 +63,7 @@ cgi.maxlen = 10 * 1024 * 1024
 store = web.session.DiskStore("sessions")
 # app = web.application(urls, globals())
 app = web.application(urls, globals())
-
+application = app.wsgifunc()
 db = models.DatabaseHandler()
 
 # Every user will have a unique session object:
@@ -675,7 +675,3 @@ class Material:
             return "Kommentin maksimipituus on 300 merkkiä"
         db.add_comment(comment, session.id, int(id))
         return ""
-
-
-if __name__ == "__main__":
-    application = app.wsgifunc()
