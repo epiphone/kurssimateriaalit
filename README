@@ -1,3 +1,4 @@
-Web application for sharing course materials. Uses web.py, sqlite3 and bootstrap.
+Web-sovellus kurssimuistiinpanojen ja muiden materiaalien jakamista varten.
+Testiversio pyörii (tai ei) [täällä](http://toimiiks.cloudapp.net).
 
-Work in progress.
+web.py + sqlite3 + bootstrap
